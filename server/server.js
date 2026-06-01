@@ -148,6 +148,71 @@ function isDeptTech(deptId) {
   return false; // default Non-Tech if unknown
 }
 
+// ── Fetch scheduled interviews by week ────────────────────────────────────────
+async function fetchScheduledByWeek(sprintStart, numWeeks, jobMap) {
+  const sprintEnd = new Date(sprintStart.getTime() + numWeeks * 7 * 24 * 60 * 60 * 1000);
+  const empty = () => ({ RPS: 0, HMS: 0, Onsite: 0, Offer: 0, 'Offer Accepted': 0 });
+
+  // scheduledByWeek[weekNum] = { Tech: {...}, 'Non-Tech': {...} }
+  const scheduledByWeek = {};
+  for (let w = 1; w <= numWeeks; w++) {
+    scheduledByWeek[w] = { Tech: empty(), 'Non-Tech': empty() };
+  }
+
+  let interviews = [];
+  try {
+    // Try Ashby scheduledInterview.list endpoint
+    interviews = await fetchAllPages('/scheduledInterview.list', {
+      scheduledAfter: sprintStart.toISOString(),
+      scheduledBefore: sprintEnd.toISOString(),
+    }, 20).catch(() => []);
+
+    // If that failed, try interviewEvent.list
+    if (!interviews.length) {
+      interviews = await fetchAllPages('/interviewEvent.list', {
+        startedAfter: sprintStart.toISOString(),
+        startedBefore: sprintEnd.toISOString(),
+      }, 20).catch(() => []);
+    }
+  } catch (e) {
+    console.warn('Scheduled interview fetch failed:', e.message);
+  }
+
+  console.log(`  Scheduled interviews fetched: ${interviews.length}`);
+  if (interviews.length > 0) console.log('  Sample interview:', JSON.stringify(interviews[0]).slice(0, 400));
+
+  for (const iv of interviews) {
+    // Try various date fields
+    const startRaw = iv.startTime || iv.scheduledAt || iv.startAt || iv.start || iv.date;
+    if (!startRaw) continue;
+    const start = new Date(startRaw);
+
+    // Determine which sprint week this falls in
+    const msIn = start - sprintStart;
+    if (msIn < 0) continue;
+    const weekNum = Math.min(Math.ceil(msIn / (7 * 24 * 60 * 60 * 1000)), numWeeks);
+
+    // Get stage name from the interview record
+    const stageName = iv.interviewStage?.title || iv.stageName || iv.stage?.title
+      || iv.interviewType?.name || iv.type?.name || iv.name || '';
+    const stage = normalizeStage(stageName, '');
+    if (!stage) continue;
+
+    // Get job/dept for Tech vs Non-Tech
+    const appId = iv.applicationId || iv.application?.id;
+    const jobId = iv.jobId || iv.job?.id;
+    const jobInfo = jobMap[jobId] || {};
+    const jobTitle = jobInfo.title || '';
+    const deptId = jobInfo.deptId || '';
+    const category = deptId ? (isDeptTech(deptId) ? 'Tech' : 'Non-Tech')
+      : (jobTitle.toLowerCase().match(/engineer|software|developer|data|infra|security|design/) ? 'Tech' : 'Non-Tech');
+
+    scheduledByWeek[weekNum][category][stage]++;
+  }
+
+  return scheduledByWeek;
+}
+
 // ── Build pipeline data ───────────────────────────────────────────────────────
 async function buildPipelineData() {
   const sixMonthsAgo = new Date();
@@ -222,12 +287,17 @@ async function buildPipelineData() {
   const weeklyPipeline = { Tech: empty(), 'Non-Tech': empty() };
 
   const now = new Date();
-  const dayOfWeek = now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-  monday.setHours(0, 0, 0, 0);
+  // Use sprint-week boundaries instead of calendar Monday
+  // Sprint started 2026-05-28; each week is 7 days
+  const SPRINT_START = new Date('2026-05-28T00:00:00.000Z');
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+  const weekNum = Math.min(Math.max(Math.ceil((now - SPRINT_START) / msPerWeek), 1), 7);
+  const weekStart = new Date(SPRINT_START.getTime() + (weekNum - 1) * msPerWeek);
+  const monday = weekStart; // "this week" = current sprint week
+  console.log(`  Sprint week ${weekNum}, starts ${weekStart.toISOString()}`);
 
   const stagesSeen = {};
+  const categorySeen = {};
 
   for (const app of fullApps) {
     const status = app.status || '';
@@ -242,6 +312,8 @@ async function buildPipelineData() {
     const jobTitle = app.job?.title || jobInfo.title || '';
     const category = deptId ? (isDeptTech(deptId) ? 'Tech' : 'Non-Tech')
       : (jobTitle.toLowerCase().match(/engineer|software|developer|data|infra|security|design/) ? 'Tech' : 'Non-Tech');
+    const catKey = `${category}: ${jobTitle || deptId || 'unknown'}`;
+    categorySeen[catKey] = (categorySeen[catKey] || 0) + 1;
 
     // Count from applicationHistory — each stage the candidate passed through
     const history = app.applicationHistory || [];
@@ -274,10 +346,18 @@ async function buildPipelineData() {
   }
 
   console.log('Stages seen:', JSON.stringify(stagesSeen));
+  console.log('Category breakdown:', JSON.stringify(categorySeen));
+
+  // Fetch scheduled interviews for all 7 sprint weeks
+  const SPRINT_START_DATE = new Date('2026-05-28T00:00:00.000Z');
+  const scheduledByWeek = await fetchScheduledByWeek(SPRINT_START_DATE, 7, jobMap);
+  console.log('Scheduled by week:', JSON.stringify(scheduledByWeek));
 
   return {
     pipeline, weeklyPipeline,
+    scheduledByWeek,
     weekStart: monday.toISOString(),
+    currentWeekNum: weekNum,
     totalApplications: fullApps.length,
     stagesSeen,
   };

@@ -92,9 +92,8 @@ function ProgressBar({ label, actual, goal, color }) {
   );
 }
 
-function WeeklyTable({ category, weekly, weekNum }) {
+function WeeklyTable({ category, scheduled, weekNum }) {
   const targets = WEEKLY_TARGETS[category][weekNum] || {};
-  const stageMap = { 'Offer Accepted': 'Offer Accepted' };
   const displayStages = ['RPS', 'HMS', 'Onsite', 'Offer', 'Offer Accepted'];
 
   return (
@@ -103,16 +102,16 @@ function WeeklyTable({ category, weekly, weekNum }) {
         <thead>
           <tr>
             <th>Stage</th>
-            <th>Target</th>
-            <th>Actual</th>
-            <th>Gap</th>
+            <th className="num">Target</th>
+            <th className="num">Scheduled</th>
+            <th className="num">Gap</th>
             <th>Status</th>
           </tr>
         </thead>
         <tbody>
           {displayStages.map(stage => {
             const target = targets[stage] || 0;
-            const actual = weekly[stage] || 0;
+            const actual = (scheduled && scheduled[stage]) || 0;
             const gap = actual - target;
             const risk = riskLabel(actual, target);
             const rc = RISK_CONFIG[risk];
@@ -272,7 +271,8 @@ export default function App() {
     </div>
   );
 
-  const { pipeline, weeklyPipeline } = data;
+  const { pipeline, weeklyPipeline, scheduledByWeek } = data;
+  const currentWeekScheduled = scheduledByWeek?.[weekNum] || { Tech: {}, 'Non-Tech': {} };
 
   return (
     <div className="app">
@@ -306,7 +306,7 @@ export default function App() {
 
       {/* Overall Risk */}
       <div className="section-row">
-        <OverallRisk weekly={weeklyPipeline} weekNum={weekNum} />
+        <OverallRisk weekly={currentWeekScheduled} weekNum={weekNum} />
       </div>
 
       {/* Hire Progress */}
@@ -345,18 +345,64 @@ export default function App() {
 
       {/* Weekly Tracker */}
       <section className="card">
-        <h2>Week {weekNum} Tracker</h2>
+        <h2>Week {weekNum} Tracker — Interviews Scheduled</h2>
         <div className="two-col">
           <div>
             <h3 className="category-title tech">Tech</h3>
-            <WeeklyTable category="Tech" weekly={weeklyPipeline.Tech} weekNum={weekNum} />
+            <WeeklyTable category="Tech" scheduled={currentWeekScheduled.Tech} weekNum={weekNum} />
           </div>
           <div>
             <h3 className="category-title nontech">Non-Tech</h3>
-            <WeeklyTable category="Non-Tech" weekly={weeklyPipeline['Non-Tech']} weekNum={weekNum} />
+            <WeeklyTable category="Non-Tech" scheduled={currentWeekScheduled['Non-Tech']} weekNum={weekNum} />
           </div>
         </div>
       </section>
+
+      {/* Upcoming Weeks */}
+      {scheduledByWeek && (
+        <section className="card">
+          <h2>Upcoming Weeks — Interviews Scheduled</h2>
+          <div style={{overflowX:'auto'}}>
+            <table className="weekly-table">
+              <thead>
+                <tr>
+                  <th>Week</th>
+                  <th>Dates</th>
+                  <th className="num">Tech RPS</th>
+                  <th className="num">Tech HMS</th>
+                  <th className="num">Tech Onsite</th>
+                  <th className="num">NT RPS</th>
+                  <th className="num">NT HMS</th>
+                  <th className="num">NT Onsite</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[1,2,3,4,5,6,7].map(w => {
+                  const wStart = new Date('2026-05-28T00:00:00.000Z');
+                  wStart.setDate(wStart.getDate() + (w-1)*7);
+                  const wEnd = new Date(wStart); wEnd.setDate(wEnd.getDate()+6);
+                  const fmt = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+                  const wd = scheduledByWeek[w] || {};
+                  const t = wd.Tech || {};
+                  const nt = wd['Non-Tech'] || {};
+                  return (
+                    <tr key={w} style={w === weekNum ? {fontWeight:700, background:'#f0f9ff'} : {}}>
+                      <td>Wk {w}{w === weekNum ? ' ◀' : ''}</td>
+                      <td style={{fontSize:'12px',color:'#64748b'}}>{fmt(wStart)}–{fmt(wEnd)}</td>
+                      <td className="num">{t.RPS||0}</td>
+                      <td className="num">{t.HMS||0}</td>
+                      <td className="num">{t.Onsite||0}</td>
+                      <td className="num">{nt.RPS||0}</td>
+                      <td className="num">{nt.HMS||0}</td>
+                      <td className="num">{nt.Onsite||0}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Conversion Rates */}
       <section className="card">
