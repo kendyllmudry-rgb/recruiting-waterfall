@@ -1,3 +1,13 @@
+/* ── Base ────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background: #0a0e1a;
+  color: #e2e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  margin: 0;
+}
+
 /* ── Layout ─────────────────────────────────────────── */
 .app {
   max-width: 1200px;
@@ -13,6 +23,7 @@
   height: 100vh;
   gap: 16px;
   color: #64748b;
+  background: #0a0e1a;
 }
 
 /* ── Header ─────────────────────────────────────────── */
@@ -28,7 +39,7 @@
 .app-header h1 {
   font-size: 26px;
   font-weight: 700;
-  color: #0f172a;
+  color: #f1f5f9;
 }
 
 .subtitle {
@@ -39,7 +50,7 @@
 
 /* ── Countdown Clock ─────────────────────────────────── */
 .countdown-clock {
-  background: #0f172a;
+  background: #111827;
   border: 1px solid #1e3a8a;
   border-radius: 12px;
   padding: 12px 20px;
@@ -52,7 +63,7 @@
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: #64748b;
   margin-bottom: 6px;
 }
 
@@ -81,7 +92,7 @@
 
 .countdown-unit-label {
   font-size: 10px;
-  color: #64748b;
+  color: #475569;
   margin-top: 2px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -90,7 +101,7 @@
 .countdown-sep {
   font-size: 24px;
   font-weight: 700;
-  color: #1d4ed8;
+  color: #3b82f6;
   margin-bottom: 12px;
   line-height: 1;
 }
@@ -102,9 +113,9 @@
 }
 
 .mock-badge {
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fde68a;
+  background: #451a03;
+  color: #fbbf24;
+  border: 1px solid #78350f;
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 13px;
@@ -123,7 +134,7 @@
   transition: background 0.15s;
 }
 
-.refresh-btn:hover { background: #1e40af; }
+.refresh-btn:hover { background: #2563eb; }
 
 /* ── Overall Risk ────────────────────────────────────── */
 .section-row {
@@ -157,17 +168,18 @@
 
 /* ── Cards ──────────────────────────────────────────── */
 .card {
-  background: white;
+  background: #111827;
+  border: 1px solid #1e293b;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 20px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
 }
 
 .card h2 {
   font-size: 17px;
   font-weight: 700;
-  color: #0f172a;
+  color: #f1f5f9;
   margin-bottom: 18px;
 }
 
@@ -187,8 +199,8 @@
   margin-bottom: 12px;
 }
 
-.category-title.tech { color: #1d4ed8; }
-.category-title.nontech { color: #15803d; }
+.category-title.tech { color: #60a5fa; }
+.category-title.nontech { color: #4ade80; }
 
 /* ── Progress Bars ──────────────────────────────────── */
 .progress-block { }
@@ -203,7 +215,7 @@
 .progress-label {
   font-size: 14px;
   font-weight: 600;
-  color: #1e293b;
+  color: #cbd5e1;
 }
 
 .progress-fraction {
@@ -213,7 +225,7 @@
 
 .progress-track {
   height: 14px;
-  background: #f1f5f9;
+  background: #1e293b;
   border-radius: 7px;
   overflow: hidden;
 }
@@ -227,7 +239,7 @@
 .progress-pct {
   margin-top: 4px;
   font-size: 12px;
-  color: #94a3b8;
+  color: #475569;
   text-align: right;
 }
 
@@ -244,7 +256,7 @@
   width: 110px;
   flex-shrink: 0;
   font-size: 13px;
-  color: #475569;
+  color: #94a3b8;
   font-weight: 500;
   padding-top: 6px;
 }
@@ -257,7 +269,7 @@
 
 .funnel-arrow {
   font-size: 11px;
-  color: #94a3b8;
+  color: #475569;
   margin-bottom: 2px;
   padding-left: 4px;
 }
@@ -275,6 +287,7 @@
   color: white;
   font-weight: 700;
   font-size: 14px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
 /* ── Weekly Table ───────────────────────────────────── */
@@ -289,10 +302,10 @@
 .weekly-table th {
   text-align: left;
   padding: 8px 10px;
-  background: #f8fafc;
+  background: #0f172a;
   color: #64748b;
   font-weight: 600;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid #1e293b;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -300,22 +313,22 @@
 
 .weekly-table td {
   padding: 10px 10px;
-  border-bottom: 1px solid #f1f5f9;
-  color: #1e293b;
+  border-bottom: 1px solid #1e293b;
+  color: #cbd5e1;
 }
 
 .weekly-table tr:last-child td { border-bottom: none; }
-.weekly-table tr:hover td { background: #f8fafc; }
+.weekly-table tr:hover td { background: #1a2234; }
 
-.stage-name { font-weight: 500; }
+.stage-name { font-weight: 500; color: #e2e8f0; }
 
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 
-.positive { color: #16a34a; font-weight: 600; }
-.negative { color: #dc2626; font-weight: 600; }
+.positive { color: #4ade80; font-weight: 600; }
+.negative { color: #f87171; font-weight: 600; }
 
 .regression { font-weight: 700; }
-.regression-row td { background: #fff1f2 !important; }
+.regression-row td { background: #2d1219 !important; }
 
 /* ── Badge ──────────────────────────────────────────── */
 .badge {
@@ -329,7 +342,7 @@
 /* ── Conversion ─────────────────────────────────────── */
 .conv-note {
   font-size: 12px;
-  color: #94a3b8;
+  color: #475569;
   margin-bottom: 12px;
   margin-top: -8px;
 }
@@ -338,8 +351,8 @@
 .spinner {
   width: 36px;
   height: 36px;
-  border: 3px solid #e2e8f0;
-  border-top-color: #1d4ed8;
+  border: 3px solid #1e293b;
+  border-top-color: #3b82f6;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -349,7 +362,7 @@
 /* ── Footer ─────────────────────────────────────────── */
 .app-footer {
   text-align: center;
-  color: #94a3b8;
+  color: #334155;
   font-size: 12px;
   margin-top: 32px;
 }

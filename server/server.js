@@ -129,10 +129,23 @@ function normalizeStage(title, status) {
 // ── Dept classification ───────────────────────────────────────────────────────
 let deptHierarchy = {}; // built during load
 
-// Top-level departments explicitly classified as Non-Tech
 const NON_TECH_DEPTS = ['marketing', 'sales', 'finance', 'legal', 'hr', 'people', 'operations',
   'recruiting', 'communications', 'brand', 'business', 'product management', 'product manager',
-  'growth', 'partnerships', 'customer', 'strategy', 'compliance', 'risk'];
+  'product', 'growth', 'partnerships', 'customer', 'strategy', 'compliance', 'risk'];
+
+// Job title patterns — checked BEFORE dept hierarchy so "Senior Product Manager" is never Tech
+const NON_TECH_TITLE = /product manager|program manager|project manager|chief of staff|scrum|agile|operations manager|marketing|sales|recruiter|sourcer|talent|finance|legal|counsel|hr |people ops|communications|brand|growth|partnerships|customer success|customer support|bizdev|business development|strategy|compliance|risk manager/i;
+const TECH_TITLE = /engineer|software|developer|data scientist|machine learning|ml engineer|ai engineer|infrastructure|devops|sre |sdet|security engineer|product designer|ux designer|ui designer|researcher/i;
+
+function classifyJob(deptId, jobTitle) {
+  const t = (jobTitle || '').toLowerCase();
+  // Title override — runs first; most reliable signal
+  if (NON_TECH_TITLE.test(t)) return 'Non-Tech';
+  if (TECH_TITLE.test(t)) return 'Tech';
+  // Fall back to dept hierarchy
+  if (deptId) return isDeptTech(deptId) ? 'Tech' : 'Non-Tech';
+  return 'Non-Tech';
+}
 
 function isDeptTech(deptId) {
   const visited = new Set();
@@ -142,7 +155,6 @@ function isDeptTech(deptId) {
     const d = deptHierarchy[id];
     if (!d) break;
     if (!d.parentId) {
-      // Top-level — classify by name
       const n = d.name.toLowerCase();
       if (NON_TECH_DEPTS.some(k => n.includes(k))) return false;
       const techWords = ['engineer', 'tech', 'design', 'data', 'research',
@@ -151,7 +163,7 @@ function isDeptTech(deptId) {
     }
     id = d.parentId;
   }
-  return false; // default Non-Tech if unknown
+  return false;
 }
 
 // Log all top-level dept classifications once
@@ -177,8 +189,7 @@ async function fetchInterviewSchedules(sprintStart, numWeeks, fullApps, jobMap) 
     const jobInfo = jobMap[app.job?.id] || {};
     const deptId = app.job?.departmentId || jobInfo.deptId || '';
     const jobTitle = app.job?.title || jobInfo.title || '';
-    const category = deptId ? (isDeptTech(deptId) ? 'Tech' : 'Non-Tech')
-      : (jobTitle.toLowerCase().match(/engineer|software|developer|data|infra|security|design|sdet/) ? 'Tech' : 'Non-Tech');
+    const category = classifyJob(deptId, jobTitle);
     appMap[app.id] = { category };
 
     if (app.currentInterviewStage?.id && app.currentInterviewStage?.title) {
@@ -265,8 +276,7 @@ function buildScheduledByWeek(fullApps, sprintStart, numWeeks, jobMap) {
     const jobInfo = jobMap[app.job?.id] || {};
     const deptId = app.job?.departmentId || jobInfo.deptId || '';
     const jobTitle = app.job?.title || jobInfo.title || '';
-    const category = deptId ? (isDeptTech(deptId) ? 'Tech' : 'Non-Tech')
-      : (jobTitle.toLowerCase().match(/engineer|software|developer|data|infra|security|design|sdet/) ? 'Tech' : 'Non-Tech');
+    const category = classifyJob(deptId, jobTitle);
 
     // Try scheduledInterviews array on app (returned by application.info)
     const scheduled = app.scheduledInterviews || app.interviews || [];
@@ -403,7 +413,7 @@ async function buildPipelineData() {
     const deptId = app.job?.departmentId || jobInfo.deptId || '';
     const jobTitle = app.job?.title || jobInfo.title || '';
     const category = deptId ? (isDeptTech(deptId) ? 'Tech' : 'Non-Tech')
-      : (jobTitle.toLowerCase().match(/engineer|software|developer|data|infra|security|design/) ? 'Tech' : 'Non-Tech');
+      : 'Non-Tech';
     const catKey = `${category}: ${jobTitle || deptId || 'unknown'}`;
     categorySeen[catKey] = (categorySeen[catKey] || 0) + 1;
 

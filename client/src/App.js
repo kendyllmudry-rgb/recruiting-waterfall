@@ -29,9 +29,9 @@ function riskLabel(actual, target) {
 }
 
 const RISK_CONFIG = {
-  on_track: { label: 'On Track', color: '#16a34a', bg: '#dcfce7', icon: '✓' },
-  at_risk:  { label: 'At Risk',  color: '#d97706', bg: '#fef3c7', icon: '⚠' },
-  off_track: { label: 'Off Track', color: '#dc2626', bg: '#fee2e2', icon: '✗' },
+  on_track: { label: 'On Track', color: '#4ade80', bg: '#052e16', icon: '✓' },
+  at_risk:  { label: 'At Risk',  color: '#fbbf24', bg: '#451a03', icon: '⚠' },
+  off_track: { label: 'Off Track', color: '#f87171', bg: '#2d1219', icon: '✗' },
 };
 
 function FunnelChart({ data, color, category }) {
@@ -389,9 +389,9 @@ export default function App() {
                   const t = wd.Tech || {};
                   const nt = wd['Non-Tech'] || {};
                   return (
-                    <tr key={w} style={w === weekNum ? {fontWeight:700, background:'#f0f9ff'} : {}}>
+                    <tr key={w} style={w === weekNum ? {fontWeight:700, background:'#1e3a5f'} : {}}>
                       <td>Wk {w}{w === weekNum ? ' ◀' : ''}</td>
-                      <td style={{fontSize:'12px',color:'#64748b'}}>{fmt(wStart)}–{fmt(wEnd)}</td>
+                      <td style={{fontSize:'12px',color:'#475569'}}>{fmt(wStart)}–{fmt(wEnd)}</td>
                       <td className="num">{t.RPS||0}</td>
                       <td className="num">{t.HMS||0}</td>
                       <td className="num">{t.Onsite||0}</td>
