@@ -272,7 +272,10 @@ export default function App() {
   );
 
   const { pipeline, weeklyPipeline, scheduledByWeek } = data;
-  const currentWeekScheduled = scheduledByWeek?.[weekNum] || { Tech: {}, 'Non-Tech': {} };
+  const rawScheduled = scheduledByWeek?.[weekNum] || { Tech: {}, 'Non-Tech': {} };
+  // Fall back to weekly pipeline (stage movements) if no scheduled interview data yet
+  const hasScheduledData = rawScheduled.Tech && Object.values(rawScheduled.Tech).some(v => v > 0);
+  const currentWeekScheduled = hasScheduledData ? rawScheduled : (weeklyPipeline || { Tech: {}, 'Non-Tech': {} });
 
   return (
     <div className="app">

@@ -139,8 +139,8 @@ function isDeptTech(deptId) {
     if (!d.parentId) {
       // Top-level — classify by name
       const n = d.name.toLowerCase();
-      const techWords = ['engineer', 'tech', 'product', 'design', 'data', 'research',
-        'security', 'platform', 'infra', 'science', 'analytics'];
+      const techWords = ['engineer', 'tech', 'design', 'data', 'research',
+        'security', 'platform', 'infra', 'science', 'analytics', 'sdet', 'developer', 'software'];
       return techWords.some(k => n.includes(k));
     }
     id = d.parentId;
@@ -148,66 +148,56 @@ function isDeptTech(deptId) {
   return false; // default Non-Tech if unknown
 }
 
-// ── Fetch scheduled interviews by week ────────────────────────────────────────
-async function fetchScheduledByWeek(sprintStart, numWeeks, jobMap) {
-  const sprintEnd = new Date(sprintStart.getTime() + numWeeks * 7 * 24 * 60 * 60 * 1000);
+// ── Build scheduled-by-week from fullApps scheduledInterviews ─────────────────
+function buildScheduledByWeek(fullApps, sprintStart, numWeeks, jobMap) {
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+  const sprintEnd = new Date(sprintStart.getTime() + numWeeks * msPerWeek);
   const empty = () => ({ RPS: 0, HMS: 0, Onsite: 0, Offer: 0, 'Offer Accepted': 0 });
 
-  // scheduledByWeek[weekNum] = { Tech: {...}, 'Non-Tech': {...} }
   const scheduledByWeek = {};
-  for (let w = 1; w <= numWeeks; w++) {
-    scheduledByWeek[w] = { Tech: empty(), 'Non-Tech': empty() };
-  }
+  for (let w = 1; w <= numWeeks; w++) scheduledByWeek[w] = { Tech: empty(), 'Non-Tech': empty() };
 
-  let interviews = [];
-  try {
-    // Try Ashby scheduledInterview.list endpoint
-    interviews = await fetchAllPages('/scheduledInterview.list', {
-      scheduledAfter: sprintStart.toISOString(),
-      scheduledBefore: sprintEnd.toISOString(),
-    }, 20).catch(() => []);
+  let totalScheduled = 0;
+  let sampleLogged = false;
 
-    // If that failed, try interviewEvent.list
-    if (!interviews.length) {
-      interviews = await fetchAllPages('/interviewEvent.list', {
-        startedAfter: sprintStart.toISOString(),
-        startedBefore: sprintEnd.toISOString(),
-      }, 20).catch(() => []);
-    }
-  } catch (e) {
-    console.warn('Scheduled interview fetch failed:', e.message);
-  }
-
-  console.log(`  Scheduled interviews fetched: ${interviews.length}`);
-  if (interviews.length > 0) console.log('  Sample interview:', JSON.stringify(interviews[0]).slice(0, 400));
-
-  for (const iv of interviews) {
-    // Try various date fields
-    const startRaw = iv.startTime || iv.scheduledAt || iv.startAt || iv.start || iv.date;
-    if (!startRaw) continue;
-    const start = new Date(startRaw);
-
-    // Determine which sprint week this falls in
-    const msIn = start - sprintStart;
-    if (msIn < 0) continue;
-    const weekNum = Math.min(Math.ceil(msIn / (7 * 24 * 60 * 60 * 1000)), numWeeks);
-
-    // Get stage name from the interview record
-    const stageName = iv.interviewStage?.title || iv.stageName || iv.stage?.title
-      || iv.interviewType?.name || iv.type?.name || iv.name || '';
-    const stage = normalizeStage(stageName, '');
-    if (!stage) continue;
-
-    // Get job/dept for Tech vs Non-Tech
-    const appId = iv.applicationId || iv.application?.id;
-    const jobId = iv.jobId || iv.job?.id;
-    const jobInfo = jobMap[jobId] || {};
-    const jobTitle = jobInfo.title || '';
-    const deptId = jobInfo.deptId || '';
+  for (const app of fullApps) {
+    const jobInfo = jobMap[app.job?.id] || {};
+    const deptId = app.job?.departmentId || jobInfo.deptId || '';
+    const jobTitle = app.job?.title || jobInfo.title || '';
     const category = deptId ? (isDeptTech(deptId) ? 'Tech' : 'Non-Tech')
-      : (jobTitle.toLowerCase().match(/engineer|software|developer|data|infra|security|design/) ? 'Tech' : 'Non-Tech');
+      : (jobTitle.toLowerCase().match(/engineer|software|developer|data|infra|security|design|sdet/) ? 'Tech' : 'Non-Tech');
 
-    scheduledByWeek[weekNum][category][stage]++;
+    // Try scheduledInterviews array on app (returned by application.info)
+    const scheduled = app.scheduledInterviews || app.interviews || [];
+    if (!sampleLogged && scheduled.length > 0) {
+      console.log('  Sample scheduledInterview entry:', JSON.stringify(scheduled[0]).slice(0, 400));
+      sampleLogged = true;
+    }
+
+    for (const iv of scheduled) {
+      const startRaw = iv.startTime || iv.scheduledAt || iv.startAt || iv.start || iv.date;
+      if (!startRaw) continue;
+      const start = new Date(startRaw);
+      if (start < sprintStart || start >= sprintEnd) continue;
+
+      const msIn = start - sprintStart;
+      const w = Math.min(Math.ceil(msIn / msPerWeek) || 1, numWeeks);
+
+      const stageName = iv.interviewStageName || iv.interviewStage?.title
+        || iv.stageName || iv.stage?.title || iv.name || '';
+      const stage = normalizeStage(stageName, '');
+      if (!stage) continue;
+
+      scheduledByWeek[w][category][stage]++;
+      totalScheduled++;
+    }
+  }
+
+  console.log(`  Scheduled interviews extracted from app.info: ${totalScheduled}`);
+  if (totalScheduled === 0) {
+    // Log sample app to see what fields are available
+    const sampleApp = fullApps[0];
+    if (sampleApp) console.log('  Sample app keys:', Object.keys(sampleApp).join(', '));
   }
 
   return scheduledByWeek;
@@ -348,9 +338,9 @@ async function buildPipelineData() {
   console.log('Stages seen:', JSON.stringify(stagesSeen));
   console.log('Category breakdown:', JSON.stringify(categorySeen));
 
-  // Fetch scheduled interviews for all 7 sprint weeks
+  // Build scheduled interviews from app.info data
   const SPRINT_START_DATE = new Date('2026-05-28T00:00:00.000Z');
-  const scheduledByWeek = await fetchScheduledByWeek(SPRINT_START_DATE, 7, jobMap);
+  const scheduledByWeek = buildScheduledByWeek(fullApps, SPRINT_START_DATE, 7, jobMap);
   console.log('Scheduled by week:', JSON.stringify(scheduledByWeek));
 
   return {
