@@ -129,6 +129,11 @@ function normalizeStage(title, status) {
 // ── Dept classification ───────────────────────────────────────────────────────
 let deptHierarchy = {}; // built during load
 
+// Top-level departments explicitly classified as Non-Tech
+const NON_TECH_DEPTS = ['marketing', 'sales', 'finance', 'legal', 'hr', 'people', 'operations',
+  'recruiting', 'communications', 'brand', 'business', 'product management', 'product manager',
+  'growth', 'partnerships', 'customer', 'strategy', 'compliance', 'risk'];
+
 function isDeptTech(deptId) {
   const visited = new Set();
   let id = deptId;
@@ -139,6 +144,7 @@ function isDeptTech(deptId) {
     if (!d.parentId) {
       // Top-level — classify by name
       const n = d.name.toLowerCase();
+      if (NON_TECH_DEPTS.some(k => n.includes(k))) return false;
       const techWords = ['engineer', 'tech', 'design', 'data', 'research',
         'security', 'platform', 'infra', 'science', 'analytics', 'sdet', 'developer', 'software'];
       return techWords.some(k => n.includes(k));
@@ -146,6 +152,13 @@ function isDeptTech(deptId) {
     id = d.parentId;
   }
   return false; // default Non-Tech if unknown
+}
+
+// Log all top-level dept classifications once
+function logDeptClassifications() {
+  const topLevel = Object.entries(deptHierarchy).filter(([,d]) => !d.parentId);
+  const classified = topLevel.map(([id, d]) => `${isDeptTech(id) ? 'Tech' : 'Non-Tech'}: ${d.name}`);
+  console.log('  Dept classifications:', classified.join(' | '));
 }
 
 // ── Fetch scheduled interviews from /interviewSchedule.list ───────────────────
@@ -373,6 +386,7 @@ async function buildPipelineData() {
   const weekStart = new Date(SPRINT_START.getTime() + (weekNum - 1) * msPerWeek);
   const monday = weekStart; // "this week" = current sprint week
   console.log(`  Sprint week ${weekNum}, starts ${weekStart.toISOString()}`);
+  logDeptClassifications();
 
   const stagesSeen = {};
   const categorySeen = {};
@@ -411,8 +425,10 @@ async function buildPipelineData() {
         countedStages6m.add(stage);
       }
 
-      // Weekly pipeline: count each entry this week
-      if (enteredAt >= monday) {
+      // Weekly pipeline: exclude auto-assigned entry stages (Application Review, Applied, Sourced)
+      // These fire automatically when anyone submits an application — not human-scheduled activities
+      const EXCLUDE_FROM_WEEKLY = ['application review', 'applied', 'sourced'];
+      if (enteredAt >= monday && !EXCLUDE_FROM_WEEKLY.includes(hStageTitle.toLowerCase().trim())) {
         weeklyPipeline[category][stage]++;
       }
     }
