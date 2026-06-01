@@ -1,0 +1,355 @@
+/* ── Layout ─────────────────────────────────────────── */
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+.center-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 16px;
+  color: #64748b;
+}
+
+/* ── Header ─────────────────────────────────────────── */
+.app-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.app-header h1 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.subtitle {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+/* ── Countdown Clock ─────────────────────────────────── */
+.countdown-clock {
+  background: #0f172a;
+  border: 1px solid #1e3a8a;
+  border-radius: 12px;
+  padding: 12px 20px;
+  text-align: center;
+  min-width: 260px;
+}
+
+.countdown-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+
+.countdown-digits {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.countdown-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 44px;
+}
+
+.countdown-num {
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #f8fafc;
+  line-height: 1;
+  font-family: 'Courier New', monospace;
+}
+
+.countdown-unit-label {
+  font-size: 10px;
+  color: #64748b;
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.countdown-sep {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1d4ed8;
+  margin-bottom: 12px;
+  line-height: 1;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mock-badge {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.refresh-btn {
+  background: #1d4ed8;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.refresh-btn:hover { background: #1e40af; }
+
+/* ── Overall Risk ────────────────────────────────────── */
+.section-row {
+  margin-bottom: 20px;
+}
+
+.overall-risk {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 10px;
+  border: 2px solid;
+}
+
+.risk-icon {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.risk-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.risk-sub {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* ── Cards ──────────────────────────────────────────── */
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.card h2 {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 18px;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+@media (max-width: 720px) {
+  .two-col { grid-template-columns: 1fr; }
+}
+
+.category-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.category-title.tech { color: #1d4ed8; }
+.category-title.nontech { color: #15803d; }
+
+/* ── Progress Bars ──────────────────────────────────── */
+.progress-block { }
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.progress-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.progress-fraction {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.progress-track {
+  height: 14px;
+  background: #f1f5f9;
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 7px;
+  transition: width 0.6s ease;
+}
+
+.progress-pct {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: right;
+}
+
+/* ── Funnel ─────────────────────────────────────────── */
+.funnel { display: flex; flex-direction: column; gap: 2px; }
+
+.funnel-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.funnel-label {
+  width: 110px;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+  padding-top: 6px;
+}
+
+.funnel-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.funnel-arrow {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 2px;
+  padding-left: 4px;
+}
+
+.funnel-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border-radius: 5px;
+  transition: width 0.5s ease;
+}
+
+.funnel-val {
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* ── Weekly Table ───────────────────────────────────── */
+.weekly-table-wrap { overflow-x: auto; }
+
+.weekly-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.weekly-table th {
+  text-align: left;
+  padding: 8px 10px;
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 600;
+  border-bottom: 2px solid #e2e8f0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.weekly-table td {
+  padding: 10px 10px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+}
+
+.weekly-table tr:last-child td { border-bottom: none; }
+.weekly-table tr:hover td { background: #f8fafc; }
+
+.stage-name { font-weight: 500; }
+
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.positive { color: #16a34a; font-weight: 600; }
+.negative { color: #dc2626; font-weight: 600; }
+
+.regression { font-weight: 700; }
+.regression-row td { background: #fff1f2 !important; }
+
+/* ── Badge ──────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── Conversion ─────────────────────────────────────── */
+.conv-note {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 12px;
+  margin-top: -8px;
+}
+
+/* ── Spinner ─────────────────────────────────────────── */
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #1d4ed8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Footer ─────────────────────────────────────────── */
+.app-footer {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 12px;
+  margin-top: 32px;
+}
