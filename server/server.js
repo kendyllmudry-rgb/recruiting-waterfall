@@ -182,12 +182,22 @@ async function fetchInterviewSchedules(sprintStart, numWeeks, fullApps, jobMap) 
     }
   }
 
-  // Fetch all interview schedules
-  const schedules = await fetchAllPages('/interviewSchedule.list', {}, 50).catch(e => {
+  // Fetch interview schedules updated in last 60 days — covers all sprint weeks without timeout
+  const sixtyDaysAgo = new Date();
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+  const schedules = await fetchAllPages('/interviewSchedule.list', {
+    updatedAfter: sixtyDaysAgo.toISOString(),
+  }, 20).catch(e => {
     console.warn('  interviewSchedule.list failed:', e.message);
     return [];
   });
   console.log(`  interviewSchedule.list: ${schedules.length} schedules fetched`);
+  const withEvents = schedules.filter(s => s.interviewEvents?.length > 0);
+  console.log(`  Schedules with events: ${withEvents.length}`);
+  if (withEvents[0]) {
+    console.log('  Sample event keys:', Object.keys(withEvents[0].interviewEvents[0]).join(', '));
+    console.log('  Sample event:', JSON.stringify(withEvents[0].interviewEvents[0]).slice(0, 400));
+  }
 
   let counted = 0, sampleWithEvents = false;
   for (const sched of schedules) {
@@ -198,9 +208,10 @@ async function fetchInterviewSchedules(sprintStart, numWeeks, fullApps, jobMap) 
     }
 
     for (const ev of events) {
-      const startRaw = ev.startTime || ev.start || ev.scheduledAt || ev.date;
+      const startRaw = ev.startTime || ev.start || ev.scheduledAt || ev.date || ev.startAt;
       if (!startRaw) continue;
       const start = new Date(startRaw);
+      // Count any interview scheduled within the sprint window
       if (start < sprintStart || start >= sprintEnd) continue;
 
       const msIn = start - sprintStart;
