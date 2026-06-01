@@ -443,9 +443,13 @@ async function buildPipelineData() {
       }
     }
 
-    // Ensure Hired apps count as Offer Accepted even if history entry is missing/old
+    // Ensure Hired apps count as Offer Accepted if their hire date is within 6 months
+    // (guards against cases where applicationHistory is missing the final OA entry)
     if (status === 'Hired' && !countedStages6m.has('Offer Accepted')) {
-      pipeline[category]['Offer Accepted']++;
+      const hiredAt = app.hiredAt || app.archivedAt || app.updatedAt || null;
+      if (!hiredAt || new Date(hiredAt) >= sixMonthsAgo) {
+        pipeline[category]['Offer Accepted']++;
+      }
     }
   }
 
