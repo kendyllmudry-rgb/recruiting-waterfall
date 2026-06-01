@@ -148,6 +148,28 @@ function isDeptTech(deptId) {
   return false; // default Non-Tech if unknown
 }
 
+// ── Probe Ashby scheduled interview endpoints ─────────────────────────────────
+async function probeScheduledInterviews() {
+  const endpoints = [
+    ['/scheduledInterview.list', {}],
+    ['/scheduledInterview.list', { limit: 5 }],
+    ['/interviewSchedule.list', {}],
+    ['/interview.list', {}],
+  ];
+  for (const [ep, body] of endpoints) {
+    try {
+      const res = await ashbyPost(ep, { ...body, limit: 2 });
+      const results = res.results || res.scheduledInterviews || res.interviews || [];
+      console.log(`  PROBE ${ep}: success, ${results.length} results, keys: ${results[0] ? Object.keys(results[0]).join(',') : 'empty'}`);
+      if (results[0]) console.log(`  PROBE sample:`, JSON.stringify(results[0]).slice(0, 500));
+      return { endpoint: ep, results };
+    } catch (e) {
+      console.log(`  PROBE ${ep}: failed — ${e.message.slice(0, 80)}`);
+    }
+  }
+  return null;
+}
+
 // ── Build scheduled-by-week from fullApps scheduledInterviews ─────────────────
 function buildScheduledByWeek(fullApps, sprintStart, numWeeks, jobMap) {
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
@@ -337,6 +359,9 @@ async function buildPipelineData() {
 
   console.log('Stages seen:', JSON.stringify(stagesSeen));
   console.log('Category breakdown:', JSON.stringify(categorySeen));
+
+  // Probe Ashby scheduled interview API to find correct endpoint
+  await probeScheduledInterviews();
 
   // Build scheduled interviews from app.info data
   const SPRINT_START_DATE = new Date('2026-05-28T00:00:00.000Z');
