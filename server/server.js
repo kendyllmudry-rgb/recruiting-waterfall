@@ -482,19 +482,24 @@ async function buildPipelineData() {
   console.log('Stages seen:', JSON.stringify(stagesSeen));
   console.log('Category breakdown:', JSON.stringify(categorySeen));
 
-  // Fetch scheduled interviews from Ashby interviewSchedule.list
+  // Return pipeline data immediately — fetch schedules in background
   const SPRINT_START_DATE = new Date('2026-05-28T00:00:00.000Z');
-  const scheduledByWeek = await fetchInterviewSchedules(SPRINT_START_DATE, 7, fullApps, jobMap);
-  console.log('Scheduled by week:', JSON.stringify(scheduledByWeek));
-
-  return {
+  const result = {
     pipeline, sprintPipeline, weeklyPipeline,
-    scheduledByWeek,
+    scheduledByWeek: null, // filled in async below
     weekStart: monday.toISOString(),
     currentWeekNum: weekNum,
     totalApplications: fullApps.length,
     stagesSeen,
   };
+
+  // Fetch schedules async — updates cache.data when done without blocking initial load
+  fetchInterviewSchedules(SPRINT_START_DATE, 7, fullApps, jobMap).then(scheduledByWeek => {
+    if (cache.data) cache.data.scheduledByWeek = scheduledByWeek;
+    console.log('Scheduled by week updated:', JSON.stringify(scheduledByWeek['1']));
+  }).catch(e => console.warn('Schedule fetch failed:', e.message));
+
+  return result;
 }
 
 // ── Load cache in background ──────────────────────────────────────────────────
