@@ -282,7 +282,7 @@ export default function App() {
       {/* Header */}
       <header className="app-header">
         <div>
-          <h1>Recruiting Ops Dashboard</h1>
+          <h1>Ricky Bobby 🏁</h1>
           <p className="subtitle">7-Week Sprint · Ends July 15, 2026 · Week {weekNum} of 7</p>
         </div>
         <div className="countdown-clock">
