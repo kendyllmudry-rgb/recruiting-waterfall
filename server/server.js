@@ -401,8 +401,9 @@ async function buildPipelineData() {
   // Aggregate
   const empty = () => ({ RPS: 0, HMS: 0, Onsite: 0, Offer: 0, 'Offer Accepted': 0 });
   const pipeline = { Tech: empty(), 'Non-Tech': empty() };
-  const sprintPipeline = { Tech: empty(), 'Non-Tech': empty() }; // hires since sprint start only
+  const sprintPipeline = { Tech: empty(), 'Non-Tech': empty() };
   const weeklyPipeline = { Tech: empty(), 'Non-Tech': empty() };
+  const activePipeline = { Tech: empty(), 'Non-Tech': empty() }; // current stage right now
 
   const now = new Date();
   // Use sprint-week boundaries instead of calendar Monday
@@ -433,6 +434,15 @@ async function buildPipelineData() {
       : 'Non-Tech';
     const catKey = `${category}: ${jobTitle || deptId || 'unknown'}`;
     categorySeen[catKey] = (categorySeen[catKey] || 0) + 1;
+
+    // Active pipeline: count by current stage right now (excludes Application Review)
+    if (status === 'Active') {
+      const curStage = normalizeStage(stageTitle, status);
+      const curTitleLower = stageTitle.toLowerCase().trim();
+      if (curStage && curTitleLower !== 'application review') {
+        activePipeline[category][curStage]++;
+      }
+    }
 
     // Count from applicationHistory — each stage the candidate passed through
     const history = app.applicationHistory || [];
@@ -485,8 +495,9 @@ async function buildPipelineData() {
 
   // Return pipeline data immediately — fetch schedules in background
   const SPRINT_START_DATE = new Date('2026-05-28T00:00:00.000Z');
+  console.log('Active pipeline:', JSON.stringify(activePipeline));
   const result = {
-    pipeline, sprintPipeline, weeklyPipeline,
+    pipeline, sprintPipeline, weeklyPipeline, activePipeline,
     scheduledByWeek: null, // filled in async below
     weekStart: monday.toISOString(),
     currentWeekNum: weekNum,
