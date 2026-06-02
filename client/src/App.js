@@ -218,10 +218,15 @@ export default function App() {
       const res = await fetch('/api/pipeline');
       const json = await res.json();
 
-      // Server is still building cache — keep spinner, poll until ready (no timeout)
+      // Server is still building cache — poll every 5s for up to 5 minutes
       if (json.loading) {
-        setTimeout(() => load(retry + 1), 5000);
-        return; // keep spinner until real data arrives
+        if (retry < 60) {
+          setTimeout(() => load(retry + 1), 5000);
+        } else {
+          setError('Data is taking too long to load. Try hitting Refresh.');
+          setLoading(false);
+        }
+        return;
       }
 
       if (!res.ok) throw new Error(json.error || `Server error: ${res.status}`);
