@@ -439,13 +439,16 @@ async function buildPipelineData() {
     const countedStages6m = new Set();   // dedupe per app for 6-month funnel
     const countedStagesWeekly = new Set(); // dedupe per app for weekly tracker
 
-    const EXCLUDE_FROM_WEEKLY = ['application review', 'applied', 'sourced'];
+    // Auto-assigned stages that fire on every application — exclude from all counts
+    const EXCLUDE_STAGES = ['application review', 'applied', 'sourced'];
 
     for (const h of history) {
       const enteredAt = h.enteredStageAt ? new Date(h.enteredStageAt) : null;
       if (!enteredAt || enteredAt < sixMonthsAgo) continue;
 
-      const hStageTitle = h.title || h.stageName || h.interviewStageName || '';
+      const hStageTitle = (h.title || h.stageName || h.interviewStageName || '').toLowerCase().trim();
+      if (EXCLUDE_STAGES.includes(hStageTitle)) continue; // skip auto-stages everywhere
+
       const stage = normalizeStage(hStageTitle, status);
       if (!stage) continue;
 
@@ -460,10 +463,8 @@ async function buildPipelineData() {
         sprintPipeline[category]['Offer Accepted']++;
       }
 
-      // Weekly pipeline: count each stage once per app, exclude auto-assigned entry stages
-      if (enteredAt >= monday
-          && !EXCLUDE_FROM_WEEKLY.includes(hStageTitle.toLowerCase().trim())
-          && !countedStagesWeekly.has(stage)) {
+      // Weekly pipeline: count each stage once per app
+      if (enteredAt >= monday && !countedStagesWeekly.has(stage)) {
         weeklyPipeline[category][stage]++;
         countedStagesWeekly.add(stage);
       }
