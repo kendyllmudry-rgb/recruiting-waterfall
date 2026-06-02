@@ -218,16 +218,10 @@ export default function App() {
       const res = await fetch('/api/pipeline');
       const json = await res.json();
 
-      // Server is still building cache — keep spinner, poll until ready
+      // Server is still building cache — keep spinner, poll until ready (no timeout)
       if (json.loading) {
-        if (retry < 24) {
-          setTimeout(() => load(retry + 1), 5000);
-        } else {
-          setData(MOCK_PIPELINE);
-          setIsMock(true);
-          setLoading(false);
-        }
-        return; // don't setLoading(false) — keep spinner
+        setTimeout(() => load(retry + 1), 5000);
+        return; // keep spinner until real data arrives
       }
 
       if (!res.ok) throw new Error(json.error || `Server error: ${res.status}`);

@@ -54,12 +54,16 @@ export function getCurrentWeek() {
 // Mock data for when Ashby API key isn't configured
 export const MOCK_PIPELINE = {
   pipeline: {
-    Tech: { RPS: 142, HMS: 89, Onsite: 31, Offer: 9, 'Offer Accepted': 7 },
-    'Non-Tech': { RPS: 58, HMS: 31, Onsite: 11, Offer: 5, 'Offer Accepted': 4 },
+    Tech: { RPS: 0, HMS: 0, Onsite: 0, Offer: 0, 'Offer Accepted': 0 },
+    'Non-Tech': { RPS: 0, HMS: 0, Onsite: 0, Offer: 0, 'Offer Accepted': 0 },
+  },
+  sprintPipeline: {
+    Tech: { RPS: 0, HMS: 0, Onsite: 0, Offer: 0, 'Offer Accepted': 0 },
+    'Non-Tech': { RPS: 0, HMS: 0, Onsite: 0, Offer: 0, 'Offer Accepted': 0 },
   },
   weeklyPipeline: {
-    Tech: { RPS: 28, HMS: 17, Onsite: 6, Offer: 2, 'Offer Accepted': 1 },
-    'Non-Tech': { RPS: 10, HMS: 5, Onsite: 1, Offer: 1, 'Offer Accepted': 1 },
+    Tech: { RPS: 0, HMS: 0, Onsite: 0, Offer: 0, 'Offer Accepted': 0 },
+    'Non-Tech': { RPS: 0, HMS: 0, Onsite: 0, Offer: 0, 'Offer Accepted': 0 },
   },
   isMock: true,
 };
