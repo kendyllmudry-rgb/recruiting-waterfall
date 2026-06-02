@@ -271,7 +271,7 @@ export default function App() {
     </div>
   );
 
-  const { pipeline, weeklyPipeline, scheduledByWeek } = data;
+  const { pipeline, sprintPipeline, weeklyPipeline, scheduledByWeek } = data;
   const rawScheduled = scheduledByWeek?.[weekNum] || { Tech: {}, 'Non-Tech': {} };
   // Fall back to weekly pipeline (stage movements) if no scheduled interview data yet
   const hasScheduledData = rawScheduled.Tech && Object.values(rawScheduled.Tech).some(v => v > 0);
@@ -318,15 +318,15 @@ export default function App() {
         <div className="two-col">
           <ProgressBar
             label="Tech Hires"
-            actual={pipeline.Tech['Offer Accepted']}
+            actual={(sprintPipeline || pipeline).Tech['Offer Accepted']}
             goal={HIRE_GOALS.Tech}
-            color="#1d4ed8"
+            color="#3b82f6"
           />
           <ProgressBar
             label="Non-Tech Hires"
-            actual={pipeline['Non-Tech']['Offer Accepted']}
+            actual={(sprintPipeline || pipeline)['Non-Tech']['Offer Accepted']}
             goal={HIRE_GOALS['Non-Tech']}
-            color="#15803d"
+            color="#4ade80"
           />
         </div>
       </section>

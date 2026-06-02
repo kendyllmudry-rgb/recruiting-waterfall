@@ -385,6 +385,7 @@ async function buildPipelineData() {
   // Aggregate
   const empty = () => ({ RPS: 0, HMS: 0, Onsite: 0, Offer: 0, 'Offer Accepted': 0 });
   const pipeline = { Tech: empty(), 'Non-Tech': empty() };
+  const sprintPipeline = { Tech: empty(), 'Non-Tech': empty() }; // hires since sprint start only
   const weeklyPipeline = { Tech: empty(), 'Non-Tech': empty() };
 
   const now = new Date();
@@ -438,6 +439,11 @@ async function buildPipelineData() {
         countedStages6m.add(stage);
       }
 
+      // Sprint pipeline: only Offer Accepted since sprint start (for Hire Goals progress)
+      if (stage === 'Offer Accepted' && enteredAt >= SPRINT_START) {
+        sprintPipeline[category]['Offer Accepted']++;
+      }
+
       // Weekly pipeline: count each stage once per app, exclude auto-assigned entry stages
       if (enteredAt >= monday
           && !EXCLUDE_FROM_WEEKLY.includes(hStageTitle.toLowerCase().trim())
@@ -466,7 +472,7 @@ async function buildPipelineData() {
   console.log('Scheduled by week:', JSON.stringify(scheduledByWeek));
 
   return {
-    pipeline, weeklyPipeline,
+    pipeline, sprintPipeline, weeklyPipeline,
     scheduledByWeek,
     weekStart: monday.toISOString(),
     currentWeekNum: weekNum,
