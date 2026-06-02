@@ -190,7 +190,8 @@ async function fetchInterviewSchedules(sprintStart, numWeeks, fullApps, jobMap) 
     const deptId = app.job?.departmentId || jobInfo.deptId || '';
     const jobTitle = app.job?.title || jobInfo.title || '';
     const category = classifyJob(deptId, jobTitle);
-    appMap[app.id] = { category };
+    const currentStage = normalizeStage(app.currentInterviewStage?.title || '', app.status || '');
+    appMap[app.id] = { category, stage: currentStage };
 
     if (app.currentInterviewStage?.id && app.currentInterviewStage?.title) {
       const stageTitle = app.currentInterviewStage.title;
@@ -216,6 +217,12 @@ async function fetchInterviewSchedules(sprintStart, numWeeks, fullApps, jobMap) 
     return [];
   });
   console.log(`  interviewSchedule.list: ${schedules.length} schedules fetched`);
+  // Log full structure of first few schedules to understand available fields
+  if (schedules[0]) {
+    console.log('  Sample schedule keys:', Object.keys(schedules[0]).join(', '));
+    console.log('  Sample schedule:', JSON.stringify(schedules[0]).slice(0, 600));
+  }
+  if (schedules[1]) console.log('  Sample schedule 2:', JSON.stringify(schedules[1]).slice(0, 600));
   const withEvents = schedules.filter(s => s.interviewEvents?.length > 0);
   console.log(`  Schedules with events: ${withEvents.length}`);
   if (withEvents[0]) {
@@ -223,38 +230,47 @@ async function fetchInterviewSchedules(sprintStart, numWeeks, fullApps, jobMap) 
     console.log('  Sample event:', JSON.stringify(withEvents[0].interviewEvents[0]).slice(0, 400));
   }
 
-  let counted = 0, sampleWithEvents = false;
+  // Log sample schedule to debug stageId mapping
+  if (withEvents[0]) {
+    console.log('  Sample sched keys:', Object.keys(withEvents[0]).join(', '));
+    console.log('  Sample sched stageId:', withEvents[0].interviewStageId);
+    console.log('  Sample sched appId:', withEvents[0].applicationId);
+    console.log('  stageIdMap size:', Object.keys(stageIdMap).length);
+    console.log('  stageIdMap sample:', JSON.stringify(Object.entries(stageIdMap).slice(0, 3)));
+    const ev0 = withEvents[0].interviewEvents[0];
+    console.log('  Sample event startTime:', ev0?.startTime, 'sprintStart:', sprintStart.toISOString());
+  }
+
+  let counted = 0, noStage = 0, outOfRange = 0;
   for (const sched of schedules) {
     const events = sched.interviewEvents || [];
-    if (!sampleWithEvents && events.length > 0) {
-      console.log('  Sample event:', JSON.stringify(events[0]).slice(0, 300));
-      sampleWithEvents = true;
-    }
 
     for (const ev of events) {
       const startRaw = ev.startTime || ev.start || ev.scheduledAt || ev.date || ev.startAt;
       if (!startRaw) continue;
       const start = new Date(startRaw);
-      // Count any interview scheduled within the sprint window
-      if (start < sprintStart || start >= sprintEnd) continue;
+      if (start < sprintStart || start >= sprintEnd) { outOfRange++; continue; }
 
       const msIn = start - sprintStart;
       const w = Math.min(Math.ceil(msIn / msPerWeek) || 1, numWeeks);
 
-      // Get stage from stageIdMap or from sched.interviewStageId
-      const stage = stageIdMap[sched.interviewStageId] || null;
-      if (!stage) continue;
+      // Look up stage — try schedule's stageId, then fall back to appMap current stage
+      let stage = stageIdMap[sched.interviewStageId] || null;
+      if (!stage) {
+        const appData = appMap[sched.applicationId];
+        stage = appData?.stage || null;
+      }
+      if (!stage) { noStage++; continue; }
 
-      // Get category from appMap
       const appData = appMap[sched.applicationId] || null;
-      const category = appData?.category || 'Tech'; // default Tech if unknown
+      const category = appData?.category || 'Tech';
 
       scheduledByWeek[w][category][stage]++;
       counted++;
     }
   }
 
-  console.log(`  Scheduled interviews counted from events: ${counted}`);
+  console.log(`  Scheduled interviews counted: ${counted} (skipped: ${outOfRange} out-of-range, ${noStage} no-stage)`);
   if (!sampleWithEvents) console.log('  NOTE: No interviewEvents found in any schedule — interviews may not have event times yet');
 
   return scheduledByWeek;
