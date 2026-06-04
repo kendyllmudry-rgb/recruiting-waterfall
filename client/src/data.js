@@ -43,11 +43,15 @@ export const WEEKLY_TARGETS = {
   },
 };
 
-// Current sprint week (1–7)
+// Current sprint week based on Mon–Fri calendar weeks (Week 1 = Jun 1–5)
 export function getCurrentWeek() {
   const now = new Date();
+  const dayOfWeek = now.getUTCDay();
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const thisMonday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysToMonday));
+  const sprintFirstMonday = new Date('2026-06-01T00:00:00.000Z');
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-  const week = Math.ceil((now - SPRINT_START) / msPerWeek);
+  const week = Math.floor((thisMonday - sprintFirstMonday) / msPerWeek) + 1;
   return Math.min(Math.max(week, 1), 7);
 }
 

@@ -425,10 +425,12 @@ async function buildPipelineData() {
   const nextWeekStart = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000);
   const nextWeekFriday = new Date(nextWeekStart.getTime() + 4 * 24 * 60 * 60 * 1000);
 
-  // Sprint week number (still used for targets)
+  // Sprint week number based on Mon–Fri calendar weeks
+  // First Monday of sprint = Jun 1, 2026
+  const SPRINT_FIRST_MONDAY = new Date('2026-06-01T00:00:00.000Z');
   const SPRINT_START = new Date('2026-05-28T00:00:00.000Z');
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-  const weekNum = Math.min(Math.max(Math.ceil((now - SPRINT_START) / msPerWeek), 1), 7);
+  const weekNum = Math.min(Math.max(Math.floor((monday - SPRINT_FIRST_MONDAY) / msPerWeek) + 1, 1), 7);
   console.log(`  Calendar week: ${monday.toISOString().slice(0,10)} – ${friday.toISOString().slice(0,10)}, sprint week ${weekNum}`);
   logDeptClassifications();
 
