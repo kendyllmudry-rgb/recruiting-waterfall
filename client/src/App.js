@@ -347,17 +347,22 @@ export default function App() {
       {monthlyFunnels && Object.keys(monthlyFunnels).map(monthKey => {
         const [year, month] = monthKey.split('-');
         const label = new Date(year, month - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+        const now = new Date();
+        const isCurrentMonth = parseInt(year) === now.getFullYear() && parseInt(month) === now.getMonth() + 1;
+        // For current month use activePipeline so it matches the weekly tracker
+        const techData = isCurrentMonth ? (activePipeline?.Tech || monthlyFunnels[monthKey].Tech) : monthlyFunnels[monthKey].Tech;
+        const ntData = isCurrentMonth ? (activePipeline?.['Non-Tech'] || monthlyFunnels[monthKey]['Non-Tech']) : monthlyFunnels[monthKey]['Non-Tech'];
         return (
           <section className="card" key={monthKey}>
-            <h2>{label}</h2>
+            <h2>{label}{isCurrentMonth ? ' (Active Pipeline)' : ''}</h2>
             <div className="two-col">
               <div>
                 <h3 className="category-title tech">Engineering</h3>
-                <FunnelChart data={monthlyFunnels[monthKey].Tech} category="Tech" />
+                <FunnelChart data={techData} category="Tech" />
               </div>
               <div>
                 <h3 className="category-title nontech">PDOG</h3>
-                <FunnelChart data={monthlyFunnels[monthKey]['Non-Tech']} category="Non-Tech" />
+                <FunnelChart data={ntData} category="Non-Tech" />
               </div>
             </div>
           </section>
