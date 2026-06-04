@@ -111,16 +111,20 @@ function WeeklyTable({ category, scheduled, weekNum }) {
             <th className="num">Target</th>
             <th className="num">Scheduled</th>
             <th className="num">Gap</th>
+            <th className="num">Conv%</th>
             <th>Status</th>
           </tr>
         </thead>
         <tbody>
-          {displayStages.map(stage => {
+          {displayStages.map((stage, i) => {
             const target = targets[stage] || 0;
             const actual = (scheduled && scheduled[stage]) || 0;
             const gap = actual - target;
             const risk = riskLabel(actual, target);
             const rc = RISK_CONFIG[risk];
+            const prevStage = displayStages[i - 1];
+            const prevActual = prevStage ? ((scheduled && scheduled[prevStage]) || 0) : null;
+            const conv = prevActual > 0 ? Math.round((actual / prevActual) * 100) + '%' : '—';
             return (
               <tr key={stage}>
                 <td className="stage-name">{stage}</td>
@@ -129,6 +133,7 @@ function WeeklyTable({ category, scheduled, weekNum }) {
                 <td className={`num gap ${gap >= 0 ? 'positive' : 'negative'}`}>
                   {gap >= 0 ? `+${gap}` : gap}
                 </td>
+                <td className="num" style={{color:'#94a3b8', fontSize:'12px'}}>{conv}</td>
                 <td>
                   <span className="badge" style={{ background: rc.bg, color: rc.color }}>
                     {rc.icon} {rc.label}
