@@ -34,40 +34,46 @@ const RISK_CONFIG = {
   off_track: { label: 'Off Track', color: '#f87171', bg: '#2d1219', icon: '✗' },
 };
 
-function FunnelChart({ data, color, category }) {
-  const maxVal = data[STAGE_LABELS[0]] || 1;
+function FunnelChart({ data, category }) {
   const colors = category === 'Tech'
-    ? ['#1e3a8a', '#1d4ed8', '#3b82f6', '#93c5fd', '#bfdbfe']
-    : ['#14532d', '#15803d', '#22c55e', '#86efac', '#bbf7d0'];
+    ? ['#1e3a8a', '#1d4ed8', '#3b82f6', '#60a5fa', '#93c5fd']
+    : ['#14532d', '#15803d', '#22c55e', '#4ade80', '#86efac'];
+
+  const W = 260;
+  const H = 52;
+  const minW = W * 0.18;
+  // Use actual max across all stages so funnel isn't broken when RPS=0
+  const maxVal = Math.max(...STAGE_LABELS.map(s => data[s] || 0), 1);
+  const getW = val => minW + (W - minW) * Math.max((val || 0) / maxVal, 0);
 
   return (
-    <div className="funnel">
+    <svg width="100%" viewBox={`0 0 ${W} ${STAGE_LABELS.length * H}`}>
       {STAGE_LABELS.map((stage, i) => {
         const val = data[stage] || 0;
-        const width = Math.max((val / maxVal) * 100, 8);
-        const passthrough = i > 0
-          ? (data[STAGE_LABELS[i - 1]] > 0
-              ? ((val / data[STAGE_LABELS[i - 1]]) * 100).toFixed(0) + '%'
-              : '—')
-          : null;
+        const nextStage = STAGE_LABELS[i + 1];
+        const nextVal = nextStage ? (data[nextStage] || 0) : 0;
+        const w = getW(val);
+        const nw = nextStage ? getW(nextVal) : minW;
+        const cx = W / 2;
+        const y = i * H;
+        const x1 = cx - w / 2, x2 = cx + w / 2;
+        const x3 = cx + nw / 2, x4 = cx - nw / 2;
+        const conv = i > 0 && (data[STAGE_LABELS[i-1]] || 0) > 0
+          ? ((val / data[STAGE_LABELS[i-1]]) * 100).toFixed(0) + '%' : null;
         return (
-          <div key={stage} className="funnel-row">
-            <div className="funnel-label">{stage}</div>
-            <div className="funnel-bar-wrap">
-              {passthrough && (
-                <div className="funnel-arrow">↓ {passthrough}</div>
-              )}
-              <div
-                className="funnel-bar"
-                style={{ width: `${width}%`, background: colors[i] }}
-              >
-                <span className="funnel-val">{val}</span>
-              </div>
-            </div>
-          </div>
+          <g key={stage}>
+            <polygon
+              points={`${x1},${y} ${x2},${y} ${x3},${y+H} ${x4},${y+H}`}
+              fill={colors[i]}
+              stroke="#0a0e1a" strokeWidth="2"
+            />
+            <text x={cx} y={y + H/2 - 6} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.75)">{stage}</text>
+            <text x={cx} y={y + H/2 + 10} textAnchor="middle" fontSize="15" fontWeight="bold" fill="white">{val}</text>
+            {conv && <text x={x2 + 6} y={y + 10} fontSize="10" fill="#64748b">{conv}</text>}
+          </g>
         );
       })}
-    </div>
+    </svg>
   );
 }
 
