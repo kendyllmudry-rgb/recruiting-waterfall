@@ -403,6 +403,7 @@ async function buildPipelineData() {
   const pipeline = { Tech: empty(), 'Non-Tech': empty() };
   const sprintPipeline = { Tech: empty(), 'Non-Tech': empty() };
   const weeklyPipeline = { Tech: empty(), 'Non-Tech': empty() };
+  const prevWeekPipeline = { Tech: empty(), 'Non-Tech': empty() };
   const activePipeline = { Tech: empty(), 'Non-Tech': empty() };
 
   // Monthly funnels — trailing 3 calendar months
@@ -414,14 +415,21 @@ async function buildPipelineData() {
     monthlyFunnels[key] = { Tech: empty(), 'Non-Tech': empty() };
   }
 
-  // Use sprint-week boundaries instead of calendar Monday
-  // Sprint started 2026-05-28; each week is 7 days
+  // Calendar Mon–Fri weeks
+  const dayOfWeek = now.getUTCDay(); // 0=Sun,1=Mon...5=Fri,6=Sat
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysToMonday));
+  const friday = new Date(monday.getTime() + 4 * 24 * 60 * 60 * 1000);
+  const prevWeekStart = new Date(monday.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const prevWeekEnd = monday;
+  const nextWeekStart = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const nextWeekFriday = new Date(nextWeekStart.getTime() + 4 * 24 * 60 * 60 * 1000);
+
+  // Sprint week number (still used for targets)
   const SPRINT_START = new Date('2026-05-28T00:00:00.000Z');
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
   const weekNum = Math.min(Math.max(Math.ceil((now - SPRINT_START) / msPerWeek), 1), 7);
-  const weekStart = new Date(SPRINT_START.getTime() + (weekNum - 1) * msPerWeek);
-  const monday = weekStart; // "this week" = current sprint week
-  console.log(`  Sprint week ${weekNum}, starts ${weekStart.toISOString()}`);
+  console.log(`  Calendar week: ${monday.toISOString().slice(0,10)} – ${friday.toISOString().slice(0,10)}, sprint week ${weekNum}`);
   logDeptClassifications();
 
   const stagesSeen = {};
@@ -498,6 +506,11 @@ async function buildPipelineData() {
         weeklyPipeline[category][stage]++;
         countedStagesWeekly.add(stage);
       }
+
+      // Previous week pipeline
+      if (prevWeekStart && enteredAt >= prevWeekStart && enteredAt < prevWeekEnd) {
+        prevWeekPipeline[category][stage]++;
+      }
     }
 
     // Ensure Hired apps count as Offer Accepted if their hire date is within 6 months
@@ -518,9 +531,13 @@ async function buildPipelineData() {
   console.log('Active pipeline:', JSON.stringify(activePipeline));
   console.log('Monthly funnels:', JSON.stringify(monthlyFunnels));
   const result = {
-    pipeline, sprintPipeline, weeklyPipeline, activePipeline, monthlyFunnels,
-    scheduledByWeek: null, // filled in async below
+    pipeline, sprintPipeline, weeklyPipeline, prevWeekPipeline, activePipeline, monthlyFunnels,
+    scheduledByWeek: null,
     weekStart: monday.toISOString(),
+    weekEnd: friday.toISOString(),
+    prevWeekStartISO: prevWeekStart.toISOString(),
+    nextWeekStartISO: nextWeekStart.toISOString(),
+    nextWeekEndISO: nextWeekFriday.toISOString(),
     currentWeekNum: weekNum,
     totalApplications: fullApps.length,
     stagesSeen,

@@ -276,7 +276,7 @@ export default function App() {
     </div>
   );
 
-  const { pipeline, sprintPipeline, weeklyPipeline, activePipeline, monthlyFunnels, scheduledByWeek } = data;
+  const { pipeline, sprintPipeline, weeklyPipeline, prevWeekPipeline = {Tech:{},['Non-Tech']:{}}, activePipeline, monthlyFunnels, scheduledByWeek } = data;
   const rawScheduled = scheduledByWeek?.[weekNum] || { Tech: {}, 'Non-Tech': {} };
   const hasScheduledData = rawScheduled.Tech && Object.values(rawScheduled.Tech).some(v => v > 0);
   // Use scheduledByWeek if available, then activePipeline (current stage), then weeklyPipeline
@@ -359,66 +359,51 @@ export default function App() {
         );
       })}
 
-      {/* Weekly Tracker */}
-      <section className="card">
-        <h2>Week {weekNum} Tracker — Interviews Scheduled</h2>
-        <div className="two-col">
-          <div>
-            <h3 className="category-title tech">Engineering</h3>
-            <WeeklyTable category="Tech" scheduled={currentWeekScheduled.Tech} weekNum={weekNum} />
-          </div>
-          <div>
-            <h3 className="category-title nontech">P Dog</h3>
-            <WeeklyTable category="Non-Tech" scheduled={currentWeekScheduled['Non-Tech']} weekNum={weekNum} />
-          </div>
-        </div>
-      </section>
+      {/* 3-Week Tracker: Last / This / Next (Mon–Fri calendar weeks) */}
+      {(() => {
+        const fmtD = iso => new Date(iso).toLocaleDateString('en-US', {month:'short', day:'numeric', timeZone:'UTC'});
+        const addDays = (iso, n) => { const d = new Date(iso); d.setUTCDate(d.getUTCDate() + n); return d.toISOString(); };
+        const wsISO = data.weekStart; // this Monday
+        const prevISO = addDays(wsISO, -7);
+        const nextISO = addDays(wsISO, 7);
 
-      {/* Upcoming Weeks */}
-      {scheduledByWeek && (
-        <section className="card">
-          <h2>Upcoming Weeks — Interviews Scheduled</h2>
-          <div style={{overflowX:'auto'}}>
-            <table className="weekly-table">
-              <thead>
-                <tr>
-                  <th>Week</th>
-                  <th>Dates</th>
-                  <th className="num">Eng RPS</th>
-                  <th className="num">Eng HMS</th>
-                  <th className="num">Eng Onsite</th>
-                  <th className="num">PDOG RPS</th>
-                  <th className="num">PDOG HMS</th>
-                  <th className="num">PDOG Onsite</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[1,2,3,4,5,6,7].map(w => {
-                  const wStart = new Date('2026-05-28T00:00:00.000Z');
-                  wStart.setDate(wStart.getDate() + (w-1)*7);
-                  const wEnd = new Date(wStart); wEnd.setDate(wEnd.getDate()+6);
-                  const fmt = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-                  const wd = scheduledByWeek[w] || {};
-                  const t = wd.Tech || {};
-                  const nt = wd['Non-Tech'] || {};
-                  return (
-                    <tr key={w} style={w === weekNum ? {fontWeight:700, background:'#1e3a5f'} : {}}>
-                      <td>Wk {w}{w === weekNum ? ' ◀' : ''}</td>
-                      <td style={{fontSize:'12px',color:'#475569'}}>{fmt(wStart)}–{fmt(wEnd)}</td>
-                      <td className="num">{t.RPS||0}</td>
-                      <td className="num">{t.HMS||0}</td>
-                      <td className="num">{t.Onsite||0}</td>
-                      <td className="num">{nt.RPS||0}</td>
-                      <td className="num">{nt.HMS||0}</td>
-                      <td className="num">{nt.Onsite||0}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
+        const weeks = [
+          {
+            label: `Last Week  ${fmtD(prevISO)}–${fmtD(addDays(prevISO, 4))}`,
+            tech: prevWeekPipeline?.Tech || {},
+            nt: prevWeekPipeline?.['Non-Tech'] || {},
+            wNum: Math.max(weekNum - 1, 1),
+          },
+          {
+            label: `This Week  ${fmtD(wsISO)}–${fmtD(addDays(wsISO, 4))}`,
+            tech: currentWeekScheduled.Tech,
+            nt: currentWeekScheduled['Non-Tech'],
+            wNum: weekNum,
+          },
+          {
+            label: `Next Week  ${fmtD(nextISO)}–${fmtD(addDays(nextISO, 4))}`,
+            tech: scheduledByWeek?.[weekNum + 1]?.Tech || {},
+            nt: scheduledByWeek?.[weekNum + 1]?.['Non-Tech'] || {},
+            wNum: Math.min(weekNum + 1, 7),
+          },
+        ];
+
+        return weeks.map(({ label, tech, nt, wNum }) => (
+          <section className="card" key={label}>
+            <h2>{label}</h2>
+            <div className="two-col">
+              <div>
+                <h3 className="category-title tech">Engineering</h3>
+                <WeeklyTable category="Tech" scheduled={tech} weekNum={wNum} />
+              </div>
+              <div>
+                <h3 className="category-title nontech">PDOG</h3>
+                <WeeklyTable category="Non-Tech" scheduled={nt} weekNum={wNum} />
+              </div>
+            </div>
+          </section>
+        ));
+      })()}
 
       {/* Conversion Rates */}
       <section className="card">
