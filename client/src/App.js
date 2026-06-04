@@ -39,8 +39,8 @@ function FunnelChart({ data, category }) {
     ? ['#1e3a8a', '#1d4ed8', '#3b82f6', '#60a5fa', '#93c5fd']
     : ['#14532d', '#15803d', '#22c55e', '#4ade80', '#86efac'];
 
-  const W = 260;
-  const H = 52;
+  const W = 200;
+  const H = 38;
   const minW = W * 0.18;
   // Use actual max across all stages so funnel isn't broken when RPS=0
   const maxVal = Math.max(...STAGE_LABELS.map(s => data[s] || 0), 1);
@@ -67,9 +67,9 @@ function FunnelChart({ data, category }) {
               fill={colors[i]}
               stroke="#0a0e1a" strokeWidth="2"
             />
-            <text x={cx} y={y + H/2 - 6} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.75)">{stage}</text>
-            <text x={cx} y={y + H/2 + 10} textAnchor="middle" fontSize="15" fontWeight="bold" fill="white">{val}</text>
-            {conv && <text x={x2 + 6} y={y + 10} fontSize="10" fill="#64748b">{conv}</text>}
+            <text x={cx} y={y + H/2 - 4} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.75)">{stage}</text>
+            <text x={cx} y={y + H/2 + 9} textAnchor="middle" fontSize="12" fontWeight="bold" fill="white">{val}</text>
+            {conv && <text x={x2 + 5} y={y + 8} fontSize="9" fill="#64748b">{conv}</text>}
           </g>
         );
       })}
