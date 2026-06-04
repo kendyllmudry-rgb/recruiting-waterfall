@@ -403,9 +403,17 @@ async function buildPipelineData() {
   const pipeline = { Tech: empty(), 'Non-Tech': empty() };
   const sprintPipeline = { Tech: empty(), 'Non-Tech': empty() };
   const weeklyPipeline = { Tech: empty(), 'Non-Tech': empty() };
-  const activePipeline = { Tech: empty(), 'Non-Tech': empty() }; // current stage right now
+  const activePipeline = { Tech: empty(), 'Non-Tech': empty() };
 
+  // Monthly funnels — trailing 3 calendar months
   const now = new Date();
+  const monthlyFunnels = {};
+  for (let i = 2; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    monthlyFunnels[key] = { Tech: empty(), 'Non-Tech': empty() };
+  }
+
   // Use sprint-week boundaries instead of calendar Monday
   // Sprint started 2026-05-28; each week is 7 days
   const SPRINT_START = new Date('2026-05-28T00:00:00.000Z');
@@ -451,6 +459,7 @@ async function buildPipelineData() {
 
     // Auto-assigned stages that fire on every application — exclude from all counts
     const EXCLUDE_STAGES = ['application review', 'applied', 'sourced'];
+    const countedStagesMonthly = {}; // monthKey → Set of "stage" strings already counted for this app
 
     for (const h of history) {
       const enteredAt = h.enteredStageAt ? new Date(h.enteredStageAt) : null;
@@ -466,6 +475,17 @@ async function buildPipelineData() {
       if (!countedStages6m.has(stage)) {
         pipeline[category][stage]++;
         countedStages6m.add(stage);
+      }
+
+      // Monthly funnels: bucket by calendar month, count each stage once per app per month
+      const monthKey = `${enteredAt.getFullYear()}-${String(enteredAt.getMonth() + 1).padStart(2, '0')}`;
+      if (monthlyFunnels[monthKey]) {
+        const monthCounted = countedStagesMonthly[monthKey] || (countedStagesMonthly[monthKey] = new Set());
+        const mk = `${monthKey}-${stage}`;
+        if (!monthCounted.has(mk)) {
+          monthlyFunnels[monthKey][category][stage]++;
+          monthCounted.add(mk);
+        }
       }
 
       // Sprint pipeline: only Offer Accepted since sprint start (for Hire Goals progress)
@@ -496,8 +516,9 @@ async function buildPipelineData() {
   // Return pipeline data immediately — fetch schedules in background
   const SPRINT_START_DATE = new Date('2026-05-28T00:00:00.000Z');
   console.log('Active pipeline:', JSON.stringify(activePipeline));
+  console.log('Monthly funnels:', JSON.stringify(monthlyFunnels));
   const result = {
-    pipeline, sprintPipeline, weeklyPipeline, activePipeline,
+    pipeline, sprintPipeline, weeklyPipeline, activePipeline, monthlyFunnels,
     scheduledByWeek: null, // filled in async below
     weekStart: monday.toISOString(),
     currentWeekNum: weekNum,

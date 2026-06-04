@@ -270,7 +270,7 @@ export default function App() {
     </div>
   );
 
-  const { pipeline, sprintPipeline, weeklyPipeline, activePipeline, scheduledByWeek } = data;
+  const { pipeline, sprintPipeline, weeklyPipeline, activePipeline, monthlyFunnels, scheduledByWeek } = data;
   const rawScheduled = scheduledByWeek?.[weekNum] || { Tech: {}, 'Non-Tech': {} };
   const hasScheduledData = rawScheduled.Tech && Object.values(rawScheduled.Tech).some(v => v > 0);
   // Use scheduledByWeek if available, then activePipeline (current stage), then weeklyPipeline
@@ -318,13 +318,13 @@ export default function App() {
         <h2>Hire Goals Progress</h2>
         <div className="two-col">
           <ProgressBar
-            label="Tech Hires"
+            label="Engineering Hires"
             actual={(sprintPipeline || pipeline).Tech['Offer Accepted']}
             goal={HIRE_GOALS.Tech}
             color="#3b82f6"
           />
           <ProgressBar
-            label="Non-Tech Hires"
+            label="PDOG Hires"
             actual={(sprintPipeline || pipeline)['Non-Tech']['Offer Accepted']}
             goal={HIRE_GOALS['Non-Tech']}
             color="#4ade80"
@@ -332,31 +332,37 @@ export default function App() {
         </div>
       </section>
 
-      {/* Funnels */}
-      <section className="card">
-        <h2>Pipeline Funnels (Last 6 Months)</h2>
-        <div className="two-col">
-          <div>
-            <h3 className="category-title tech">Tech</h3>
-            <FunnelChart data={pipeline.Tech} category="Tech" />
-          </div>
-          <div>
-            <h3 className="category-title nontech">Non-Tech</h3>
-            <FunnelChart data={pipeline['Non-Tech']} category="Non-Tech" />
-          </div>
-        </div>
-      </section>
+      {/* Monthly Funnels */}
+      {monthlyFunnels && Object.keys(monthlyFunnels).map(monthKey => {
+        const [year, month] = monthKey.split('-');
+        const label = new Date(year, month - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+        return (
+          <section className="card" key={monthKey}>
+            <h2>{label}</h2>
+            <div className="two-col">
+              <div>
+                <h3 className="category-title tech">Engineering</h3>
+                <FunnelChart data={monthlyFunnels[monthKey].Tech} category="Tech" />
+              </div>
+              <div>
+                <h3 className="category-title nontech">PDOG</h3>
+                <FunnelChart data={monthlyFunnels[monthKey]['Non-Tech']} category="Non-Tech" />
+              </div>
+            </div>
+          </section>
+        );
+      })}
 
       {/* Weekly Tracker */}
       <section className="card">
         <h2>Week {weekNum} Tracker — Interviews Scheduled</h2>
         <div className="two-col">
           <div>
-            <h3 className="category-title tech">Tech</h3>
+            <h3 className="category-title tech">Engineering</h3>
             <WeeklyTable category="Tech" scheduled={currentWeekScheduled.Tech} weekNum={weekNum} />
           </div>
           <div>
-            <h3 className="category-title nontech">Non-Tech</h3>
+            <h3 className="category-title nontech">P Dog</h3>
             <WeeklyTable category="Non-Tech" scheduled={currentWeekScheduled['Non-Tech']} weekNum={weekNum} />
           </div>
         </div>
@@ -372,12 +378,12 @@ export default function App() {
                 <tr>
                   <th>Week</th>
                   <th>Dates</th>
-                  <th className="num">Tech RPS</th>
-                  <th className="num">Tech HMS</th>
-                  <th className="num">Tech Onsite</th>
-                  <th className="num">NT RPS</th>
-                  <th className="num">NT HMS</th>
-                  <th className="num">NT Onsite</th>
+                  <th className="num">Eng RPS</th>
+                  <th className="num">Eng HMS</th>
+                  <th className="num">Eng Onsite</th>
+                  <th className="num">PDOG RPS</th>
+                  <th className="num">PDOG HMS</th>
+                  <th className="num">PDOG Onsite</th>
                 </tr>
               </thead>
               <tbody>
@@ -414,11 +420,11 @@ export default function App() {
         <p className="conv-note">Rows in red indicate a regression of &gt;5pp below historical rate.</p>
         <div className="two-col">
           <div>
-            <h3 className="category-title tech">Tech</h3>
+            <h3 className="category-title tech">Engineering</h3>
             <ConversionTable category="Tech" funnel={pipeline.Tech} />
           </div>
           <div>
-            <h3 className="category-title nontech">Non-Tech</h3>
+            <h3 className="category-title nontech">P Dog</h3>
             <ConversionTable category="Non-Tech" funnel={pipeline['Non-Tech']} />
           </div>
         </div>
