@@ -207,11 +207,12 @@ async function fetchInterviewSchedules(sprintStart, numWeeks, fullApps, jobMap, 
     }
   }
 
-  // Fetch interview schedules updated in last 60 days — covers all sprint weeks without timeout
-  const sixtyDaysAgo = new Date();
-  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+  // Fetch interview schedules updated in last 14 days — recent enough for upcoming interviews
+  // without hitting the 2000-record cap that would push out the newest (future) schedules
+  const fourteenDaysAgo = new Date();
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
   const schedules = await fetchAllPages('/interviewSchedule.list', {
-    updatedAfter: sixtyDaysAgo.toISOString(),
+    updatedAfter: fourteenDaysAgo.toISOString(),
   }, 20).catch(e => {
     console.warn('  interviewSchedule.list failed:', e.message);
     return [];
