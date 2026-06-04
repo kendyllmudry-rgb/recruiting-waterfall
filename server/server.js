@@ -174,7 +174,7 @@ function logDeptClassifications() {
 }
 
 // ── Fetch scheduled interviews from /interviewSchedule.list ───────────────────
-async function fetchInterviewSchedules(sprintStart, numWeeks, fullApps, jobMap) {
+async function fetchInterviewSchedules(sprintStart, numWeeks, fullApps, jobMap, appStageMap = {}) {
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
   const sprintEnd = new Date(sprintStart.getTime() + numWeeks * msPerWeek);
   const empty = () => ({ RPS: 0, HMS: 0, Onsite: 0, Offer: 0, 'Offer Accepted': 0 });
@@ -254,15 +254,12 @@ async function fetchInterviewSchedules(sprintStart, numWeeks, fullApps, jobMap) 
       const msIn = start - sprintStart;
       const w = Math.min(Math.ceil(msIn / msPerWeek) || 1, numWeeks);
 
-      // Look up stage — try schedule's stageId, then fall back to appMap current stage
+      // Look up stage: stageIdMap → appMap (fullApps) → appStageMap (all active apps)
       let stage = stageIdMap[sched.interviewStageId] || null;
-      if (!stage) {
-        const appData = appMap[sched.applicationId];
-        stage = appData?.stage || null;
-      }
+      const appData = appMap[sched.applicationId] || appStageMap[sched.applicationId] || null;
+      if (!stage) stage = appData?.stage || null;
       if (!stage) { noStage++; continue; }
 
-      const appData = appMap[sched.applicationId] || null;
       const category = appData?.category || 'Tech';
 
       scheduledByWeek[w][category][stage]++;
@@ -384,8 +381,23 @@ async function buildPipelineData() {
   for (const a of uniqueApps) statusBreakdown[a.status] = (statusBreakdown[a.status] || 0) + 1;
   console.log('  Status breakdown:', JSON.stringify(statusBreakdown));
 
-  // Only fetch full app.info for active pipeline + recent hires
-  // Use a 45-day window — all 275 active candidates were moved to a stage recently
+  // Build a broad appStageMap from ALL active apps in the list (covers interviewSchedule lookups)
+  // application.list returns currentInterviewStage so we can map appId → stage without fetching full info
+  const appStageMap = {};
+  for (const a of uniqueApps) {
+    if (a.status === 'Active' || a.status === 'Hired') {
+      const jobInfo = jobMap[a.job?.id] || {};
+      const deptId = a.job?.departmentId || jobInfo.deptId || '';
+      const jobTitle = a.job?.title || jobInfo.title || '';
+      const category = classifyJob(deptId, jobTitle);
+      const stageTitle = a.currentInterviewStage?.title || '';
+      const stage = normalizeStage(stageTitle, a.status || '');
+      appStageMap[a.id] = { category, stage };
+    }
+  }
+  console.log(`  appStageMap built: ${Object.keys(appStageMap).length} apps`);
+
+  // Only fetch full app.info for active pipeline + recent hires (for history/conversion data)
   const fortyFiveDaysAgo = new Date();
   fortyFiveDaysAgo.setDate(fortyFiveDaysAgo.getDate() - 45);
   const recentCutoff = fortyFiveDaysAgo.toISOString();
@@ -546,7 +558,7 @@ async function buildPipelineData() {
   };
 
   // Fetch schedules async — updates cache.data when done without blocking initial load
-  fetchInterviewSchedules(SPRINT_START_DATE, 7, fullApps, jobMap).then(scheduledByWeek => {
+  fetchInterviewSchedules(SPRINT_START_DATE, 7, fullApps, jobMap, appStageMap).then(scheduledByWeek => {
     if (cache.data) cache.data.scheduledByWeek = scheduledByWeek;
     console.log('Scheduled by week updated:', JSON.stringify(scheduledByWeek['1']));
   }).catch(e => console.warn('Schedule fetch failed:', e.message));
