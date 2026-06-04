@@ -245,6 +245,7 @@ body {
 
 /* ── Funnel ─────────────────────────────────────────── */
 .funnel { display: flex; flex-direction: column; gap: 2px; }
+.funnel svg { max-width: 220px; display: block; }
 
 .funnel-row {
   display: flex;

@@ -39,15 +39,15 @@ function FunnelChart({ data, category }) {
     ? ['#1e3a8a', '#1d4ed8', '#3b82f6', '#60a5fa', '#93c5fd']
     : ['#14532d', '#15803d', '#22c55e', '#4ade80', '#86efac'];
 
-  const W = 160;
-  const H = 28;
+  const W = 130;
+  const H = 24;
   const minW = W * 0.18;
   // Use actual max across all stages so funnel isn't broken when RPS=0
   const maxVal = Math.max(...STAGE_LABELS.map(s => data[s] || 0), 1);
   const getW = val => minW + (W - minW) * Math.max((val || 0) / maxVal, 0);
 
   return (
-    <svg width="100%" viewBox={`0 0 ${W} ${STAGE_LABELS.length * H}`}>
+    <svg width="100%" viewBox={`0 0 ${W} ${STAGE_LABELS.length * H}`} style={{maxWidth:'220px', display:'block'}}>
       {STAGE_LABELS.map((stage, i) => {
         const val = data[stage] || 0;
         const nextStage = STAGE_LABELS[i + 1];
