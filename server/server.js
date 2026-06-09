@@ -624,17 +624,31 @@ app.get('/api/status', (req, res) => {
 
 app.get('/api/debug-schedules', async (req, res) => {
   try {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 45);
-    const schedules = await fetchAllPages('/interviewSchedule.list', { updatedAfter: cutoff.toISOString() }, 5);
-    const sample = schedules.slice(0, 3).map(s => ({
-      id: s.id,
-      applicationId: s.applicationId,
-      interviewStageId: s.interviewStageId,
-      eventCount: s.interviewEvents?.length || 0,
-      firstEvent: s.interviewEvents?.[0],
-    }));
-    res.json({ total: schedules.length, sample, scheduledByWeek: cache.data?.scheduledByWeek });
+    // Pick a few active apps from cache and fetch their schedules directly
+    const activeApps = (cache.data ? [] : []);
+    // Instead, fetch a small set of per-app schedules to see what fields come back
+    // First get a handful of active apps from a quick application.list call
+    const sampleApps = await ashbyPost('/application.list', { status: 'Active', limit: 5 }).then(r => r.results || []).catch(() => []);
+    const perAppResults = [];
+    for (const app of sampleApps.slice(0, 3)) {
+      const scheds = await ashbyPost('/interviewSchedule.list', { applicationId: app.id }).then(r => r.results || []).catch(() => []);
+      perAppResults.push({
+        applicationId: app.id,
+        currentStage: app.currentInterviewStage?.title,
+        scheduleCount: scheds.length,
+        schedules: scheds.map(s => ({
+          id: s.id,
+          interviewStageId: s.interviewStageId,
+          status: s.status,
+          allKeys: Object.keys(s),
+          eventCount: s.interviewEvents?.length || 0,
+          firstEvent: s.interviewEvents?.[0],
+          // check for timing at schedule level too
+          scheduledAt: s.scheduledAt || s.startTime || s.date || null,
+        })),
+      });
+    }
+    res.json({ perAppResults, scheduledByWeek: cache.data?.scheduledByWeek });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
