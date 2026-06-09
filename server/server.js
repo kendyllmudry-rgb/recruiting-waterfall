@@ -173,104 +173,86 @@ function logDeptClassifications() {
   console.log('  Dept classifications:', classified.join(' | '));
 }
 
-// ── Fetch scheduled interviews from /interviewSchedule.list ───────────────────
-async function fetchInterviewSchedules(sprintStart, numWeeks, fullApps, jobMap, appStageMap = {}) {
+// ── Fetch scheduled interviews — per-application approach ─────────────────────
+// Fetches interviewSchedule.list per active app instead of globally.
+// The global list returns thousands of old records (oldest-first) and future
+// interviews get buried well past any page limit. Per-app is direct and accurate.
+async function fetchInterviewSchedules(weekAnchor, numWeeks, fullApps, jobMap, appStageMap = {}) {
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-  const sprintEnd = new Date(sprintStart.getTime() + numWeeks * msPerWeek);
+  const sprintEnd = new Date(weekAnchor.getTime() + numWeeks * msPerWeek);
   const empty = () => ({ RPS: 0, HMS: 0, Onsite: 0, Offer: 0, 'Offer Accepted': 0 });
   const scheduledByWeek = {};
   for (let w = 1; w <= numWeeks; w++) scheduledByWeek[w] = { Tech: empty(), 'Non-Tech': empty() };
 
-  // Build maps from fullApps data
-  const appMap = {};      // applicationId → { category, stageTitle }
-  const stageIdMap = {};  // interviewStageId → normalized stage
+  // Build category + stageId lookup maps from fullApps
+  const appCategoryMap = {};
+  const stageIdMap = {};
 
   for (const app of fullApps) {
     const jobInfo = jobMap[app.job?.id] || {};
     const deptId = app.job?.departmentId || jobInfo.deptId || '';
     const jobTitle = app.job?.title || jobInfo.title || '';
-    const category = classifyJob(deptId, jobTitle);
-    const currentStage = normalizeStage(app.currentInterviewStage?.title || '', app.status || '');
-    appMap[app.id] = { category, stage: currentStage };
+    appCategoryMap[app.id] = classifyJob(deptId, jobTitle);
 
     if (app.currentInterviewStage?.id && app.currentInterviewStage?.title) {
-      const stageTitle = app.currentInterviewStage.title;
-      const normalized = normalizeStage(stageTitle, app.status);
-      if (normalized) stageIdMap[app.currentInterviewStage.id] = normalized;
+      const n = normalizeStage(app.currentInterviewStage.title, app.status);
+      if (n) stageIdMap[app.currentInterviewStage.id] = n;
     }
-    // Also map from applicationHistory
     for (const h of (app.applicationHistory || [])) {
       if (h.interviewStageId && h.title) {
-        const normalized = normalizeStage(h.title, '');
-        if (normalized) stageIdMap[h.interviewStageId] = normalized;
+        const n = normalizeStage(h.title, '');
+        if (n) stageIdMap[h.interviewStageId] = n;
       }
     }
   }
-
-  // Fetch schedules updated in last 45 days — wide enough to catch interviews
-  // scheduled well in advance (3-4 weeks out) without blowing the 2000-record cap
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 45);
-  const schedules = await fetchAllPages('/interviewSchedule.list', {
-    updatedAfter: cutoff.toISOString(),
-  }, 30).catch(e => {
-    console.warn('  interviewSchedule.list failed:', e.message);
-    return [];
-  });
-  console.log(`  interviewSchedule.list: ${schedules.length} schedules fetched`);
-  // Log full structure of first few schedules to understand available fields
-  if (schedules[0]) {
-    console.log('  Sample schedule keys:', Object.keys(schedules[0]).join(', '));
-    console.log('  Sample schedule:', JSON.stringify(schedules[0]).slice(0, 600));
-  }
-  if (schedules[1]) console.log('  Sample schedule 2:', JSON.stringify(schedules[1]).slice(0, 600));
-  const withEvents = schedules.filter(s => s.interviewEvents?.length > 0);
-  console.log(`  Schedules with events: ${withEvents.length}`);
-  if (withEvents[0]) {
-    console.log('  Sample event keys:', Object.keys(withEvents[0].interviewEvents[0]).join(', '));
-    console.log('  Sample event:', JSON.stringify(withEvents[0].interviewEvents[0]).slice(0, 400));
+  // Backfill category for apps not in fullApps
+  for (const [id, info] of Object.entries(appStageMap)) {
+    if (!appCategoryMap[id]) appCategoryMap[id] = info.category;
   }
 
-  // Log sample schedule to debug stageId mapping
-  if (withEvents[0]) {
-    console.log('  Sample sched keys:', Object.keys(withEvents[0]).join(', '));
-    console.log('  Sample sched stageId:', withEvents[0].interviewStageId);
-    console.log('  Sample sched appId:', withEvents[0].applicationId);
-    console.log('  stageIdMap size:', Object.keys(stageIdMap).length);
-    console.log('  stageIdMap sample:', JSON.stringify(Object.entries(stageIdMap).slice(0, 3)));
-    const ev0 = withEvents[0].interviewEvents[0];
-    console.log('  Sample event startTime:', ev0?.startTime, 'sprintStart:', sprintStart.toISOString());
+  // Fetch schedules only for currently active apps
+  const activeApps = fullApps.filter(a => a.status === 'Active');
+  console.log(`  Fetching schedules for ${activeApps.length} active apps (per-app)...`);
+
+  const CONCURRENCY = 15;
+  const allSchedules = [];
+  for (let i = 0; i < activeApps.length; i += CONCURRENCY) {
+    const batch = activeApps.slice(i, i + CONCURRENCY);
+    const settled = await Promise.allSettled(
+      batch.map(app =>
+        ashbyPost('/interviewSchedule.list', { applicationId: app.id })
+          .then(r => r.results || [])
+          .catch(() => [])
+      )
+    );
+    for (const r of settled) {
+      if (r.status === 'fulfilled') allSchedules.push(...r.value);
+    }
   }
+  console.log(`  Per-app schedules fetched: ${allSchedules.length}`);
 
-  let counted = 0, noStage = 0, outOfRange = 0;
-  for (const sched of schedules) {
-    const events = sched.interviewEvents || [];
+  let counted = 0, outOfRange = 0, noStage = 0;
+  for (const sched of allSchedules) {
+    const appId = sched.applicationId;
+    const category = appCategoryMap[appId] || appStageMap[appId]?.category || 'Tech';
+    const stage = stageIdMap[sched.interviewStageId] || appStageMap[appId]?.stage || null;
 
-    for (const ev of events) {
+    for (const ev of (sched.interviewEvents || [])) {
       const startRaw = ev.startTime || ev.start || ev.scheduledAt || ev.date || ev.startAt;
       if (!startRaw) continue;
       const start = new Date(startRaw);
-      if (start < sprintStart || start >= sprintEnd) { outOfRange++; continue; }
+      if (start < weekAnchor || start >= sprintEnd) { outOfRange++; continue; }
 
-      const msIn = start - sprintStart;
+      const msIn = start - weekAnchor;
       const w = Math.min(Math.floor(msIn / msPerWeek) + 1, numWeeks);
 
-      // Look up stage: stageIdMap → appMap (fullApps) → appStageMap (all active apps)
-      let stage = stageIdMap[sched.interviewStageId] || null;
-      const appData = appMap[sched.applicationId] || appStageMap[sched.applicationId] || null;
-      if (!stage) stage = appData?.stage || null;
       if (!stage) { noStage++; continue; }
-
-      const category = appData?.category || 'Tech';
-
       scheduledByWeek[w][category][stage]++;
       counted++;
     }
   }
 
-  console.log(`  Scheduled interviews counted: ${counted} (skipped: ${outOfRange} out-of-range, ${noStage} no-stage)`);
-  if (withEvents.length === 0) console.log('  NOTE: No interviewEvents found in any schedule — interviews may not have event times yet');
-
+  console.log(`  Scheduled interviews counted: ${counted} (out-of-range: ${outOfRange}, no-stage: ${noStage})`);
   return scheduledByWeek;
 }
 
