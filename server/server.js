@@ -207,13 +207,13 @@ async function fetchInterviewSchedules(sprintStart, numWeeks, fullApps, jobMap, 
     }
   }
 
-  // Fetch interview schedules updated in last 14 days — recent enough for upcoming interviews
-  // without hitting the 2000-record cap that would push out the newest (future) schedules
-  const fourteenDaysAgo = new Date();
-  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+  // Fetch schedules updated in last 45 days — wide enough to catch interviews
+  // scheduled well in advance (3-4 weeks out) without blowing the 2000-record cap
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 45);
   const schedules = await fetchAllPages('/interviewSchedule.list', {
-    updatedAfter: fourteenDaysAgo.toISOString(),
-  }, 20).catch(e => {
+    updatedAfter: cutoff.toISOString(),
+  }, 30).catch(e => {
     console.warn('  interviewSchedule.list failed:', e.message);
     return [];
   });
@@ -253,7 +253,7 @@ async function fetchInterviewSchedules(sprintStart, numWeeks, fullApps, jobMap, 
       if (start < sprintStart || start >= sprintEnd) { outOfRange++; continue; }
 
       const msIn = start - sprintStart;
-      const w = Math.min(Math.ceil(msIn / msPerWeek) || 1, numWeeks);
+      const w = Math.min(Math.floor(msIn / msPerWeek) + 1, numWeeks);
 
       // Look up stage: stageIdMap → appMap (fullApps) → appStageMap (all active apps)
       let stage = stageIdMap[sched.interviewStageId] || null;
@@ -269,7 +269,7 @@ async function fetchInterviewSchedules(sprintStart, numWeeks, fullApps, jobMap, 
   }
 
   console.log(`  Scheduled interviews counted: ${counted} (skipped: ${outOfRange} out-of-range, ${noStage} no-stage)`);
-  if (!sampleWithEvents) console.log('  NOTE: No interviewEvents found in any schedule — interviews may not have event times yet');
+  if (withEvents.length === 0) console.log('  NOTE: No interviewEvents found in any schedule — interviews may not have event times yet');
 
   return scheduledByWeek;
 }
@@ -306,7 +306,7 @@ function buildScheduledByWeek(fullApps, sprintStart, numWeeks, jobMap) {
       if (start < sprintStart || start >= sprintEnd) continue;
 
       const msIn = start - sprintStart;
-      const w = Math.min(Math.ceil(msIn / msPerWeek) || 1, numWeeks);
+      const w = Math.min(Math.floor(msIn / msPerWeek) + 1, numWeeks);
 
       const stageName = iv.interviewStageName || iv.interviewStage?.title
         || iv.stageName || iv.stage?.title || iv.name || '';
@@ -461,8 +461,7 @@ async function buildPipelineData() {
     const jobInfo = jobMap[app.job?.id] || {};
     const deptId = app.job?.departmentId || jobInfo.deptId || '';
     const jobTitle = app.job?.title || jobInfo.title || '';
-    const category = deptId ? (isDeptTech(deptId) ? 'Tech' : 'Non-Tech')
-      : 'Non-Tech';
+    const category = classifyJob(deptId, jobTitle);
     const catKey = `${category}: ${jobTitle || deptId || 'unknown'}`;
     categorySeen[catKey] = (categorySeen[catKey] || 0) + 1;
 
@@ -559,7 +558,8 @@ async function buildPipelineData() {
   };
 
   // Fetch schedules async — updates cache.data when done without blocking initial load
-  fetchInterviewSchedules(SPRINT_START_DATE, 7, fullApps, jobMap, appStageMap).then(scheduledByWeek => {
+  // Use SPRINT_FIRST_MONDAY (Jun 1) as anchor so week numbers match the frontend calendar weeks
+  fetchInterviewSchedules(SPRINT_FIRST_MONDAY, 7, fullApps, jobMap, appStageMap).then(scheduledByWeek => {
     if (cache.data) cache.data.scheduledByWeek = scheduledByWeek;
     console.log('Scheduled by week updated:', JSON.stringify(scheduledByWeek['1']));
   }).catch(e => console.warn('Schedule fetch failed:', e.message));
