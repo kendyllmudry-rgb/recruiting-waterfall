@@ -540,13 +540,17 @@ async function buildPipelineData() {
   console.log('Stages seen:', JSON.stringify(stagesSeen));
   console.log('Category breakdown:', JSON.stringify(categorySeen));
 
-  // Return pipeline data immediately — fetch schedules in background
-  const SPRINT_START_DATE = new Date('2026-05-28T00:00:00.000Z');
   console.log('Active pipeline:', JSON.stringify(activePipeline));
   console.log('Monthly funnels:', JSON.stringify(monthlyFunnels));
+
+  // Build baseline scheduledByWeek synchronously from app.scheduledInterviews
+  // (already fetched via application.info — no extra API call needed)
+  const scheduledFromApps = buildScheduledByWeek(fullApps, SPRINT_FIRST_MONDAY, 7, jobMap);
+  console.log('Scheduled from app.info (baseline):', JSON.stringify(scheduledFromApps));
+
   const result = {
     pipeline, sprintPipeline, weeklyPipeline, prevWeekPipeline, activePipeline, monthlyFunnels,
-    scheduledByWeek: null,
+    scheduledByWeek: scheduledFromApps,
     weekStart: monday.toISOString(),
     weekEnd: friday.toISOString(),
     prevWeekStartISO: prevWeekStart.toISOString(),
@@ -557,11 +561,27 @@ async function buildPipelineData() {
     stagesSeen,
   };
 
-  // Fetch schedules async — updates cache.data when done without blocking initial load
+  // Also fetch from /interviewSchedule.list async — merges with app baseline
   // Use SPRINT_FIRST_MONDAY (Jun 1) as anchor so week numbers match the frontend calendar weeks
-  fetchInterviewSchedules(SPRINT_FIRST_MONDAY, 7, fullApps, jobMap, appStageMap).then(scheduledByWeek => {
-    if (cache.data) cache.data.scheduledByWeek = scheduledByWeek;
-    console.log('Scheduled by week updated:', JSON.stringify(scheduledByWeek['1']));
+  fetchInterviewSchedules(SPRINT_FIRST_MONDAY, 7, fullApps, jobMap, appStageMap).then(scheduledFromAPI => {
+    // Merge: take max of each cell to avoid double-counting while keeping the best data
+    const CATS = ['Tech', 'Non-Tech'];
+    const STGS = ['RPS', 'HMS', 'Onsite', 'Offer', 'Offer Accepted'];
+    const merged = {};
+    for (let w = 1; w <= 7; w++) {
+      merged[w] = { Tech: {}, 'Non-Tech': {} };
+      for (const cat of CATS) {
+        for (const st of STGS) {
+          merged[w][cat][st] = Math.max(
+            (scheduledFromApps[w]?.[cat]?.[st] || 0),
+            (scheduledFromAPI[w]?.[cat]?.[st] || 0)
+          );
+        }
+      }
+    }
+    if (cache.data) cache.data.scheduledByWeek = merged;
+    console.log('Scheduled by week merged (w2):', JSON.stringify(merged[2]));
+    console.log('Scheduled by week merged (w3):', JSON.stringify(merged[3]));
   }).catch(e => console.warn('Schedule fetch failed:', e.message));
 
   return result;
@@ -618,6 +638,24 @@ app.get('/api/status', (req, res) => {
     error: cache.error,
     stagesSeen: cache.data?.stagesSeen,
   });
+});
+
+app.get('/api/debug-schedules', async (req, res) => {
+  try {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 45);
+    const schedules = await fetchAllPages('/interviewSchedule.list', { updatedAfter: cutoff.toISOString() }, 5);
+    const sample = schedules.slice(0, 3).map(s => ({
+      id: s.id,
+      applicationId: s.applicationId,
+      interviewStageId: s.interviewStageId,
+      eventCount: s.interviewEvents?.length || 0,
+      firstEvent: s.interviewEvents?.[0],
+    }));
+    res.json({ total: schedules.length, sample, scheduledByWeek: cache.data?.scheduledByWeek });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.get('/api/health', (req, res) => {
